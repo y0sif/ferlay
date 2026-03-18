@@ -1,10 +1,18 @@
 use regex::Regex;
-use tokio::io::{AsyncBufReadExt, BufReader};
-use tokio::process::Child;
+use tokio::io::{AsyncBufReadExt, BufReader, Lines};
+use tokio::process::{Child, ChildStdout};
+
+/// Result of URL capture: the URL and the stdout reader (must be kept alive
+/// to avoid closing the pipe and killing the claude process).
+pub struct CaptureResult {
+    pub url: String,
+    pub stdout_lines: Lines<BufReader<ChildStdout>>,
+}
 
 /// Reads stdout from a claude process line by line, looking for the session URL.
-/// Returns the URL when found, or an error if the process exits first.
-pub async fn wait_for_url(child: &mut Child) -> Result<String, String> {
+/// Returns the URL and the stdout reader on success.
+/// The caller MUST keep `stdout_lines` alive for the lifetime of the process.
+pub async fn wait_for_url(child: &mut Child) -> Result<CaptureResult, String> {
     let stdout = child
         .stdout
         .take()
@@ -21,7 +29,10 @@ pub async fn wait_for_url(child: &mut Child) -> Result<String, String> {
                     Ok(Some(line)) => {
                         tracing::debug!(line = %line, "claude stdout");
                         if let Some(m) = url_regex.find(&line) {
-                            return Ok(m.as_str().to_string());
+                            return Ok(CaptureResult {
+                                url: m.as_str().to_string(),
+                                stdout_lines: lines,
+                            });
                         }
                     }
                     Ok(None) => {

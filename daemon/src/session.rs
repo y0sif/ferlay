@@ -87,8 +87,10 @@ impl SessionManager {
 
         // Capture URL from stdout
         match capture::wait_for_url(&mut child).await {
-            Ok(url) => {
-                tracing::info!(session_id = %session_id, url = %url, "URL captured");
+            Ok(capture_result) => {
+                tracing::info!(session_id = %session_id, url = %capture_result.url, "URL captured");
+
+                let url = capture_result.url.clone();
 
                 if let Some(s) = self.sessions.get_mut(&session_id) {
                     s.status = SessionStatus::Ready;
@@ -102,8 +104,8 @@ impl SessionManager {
                     name,
                 });
 
-                // Monitor process in background
-                self.monitor_process(session_id);
+                // Monitor process in background (keeps stdout alive)
+                self.monitor_process(session_id, capture_result.stdout_lines);
             }
             Err(e) => {
                 tracing::error!(session_id = %session_id, error = %e, "Failed to capture URL");
@@ -144,19 +146,21 @@ impl SessionManager {
 
     /// Marks a session as finished/crashed when its process exits.
     /// Called after URL is captured and session is in Ready state.
-    fn monitor_process(&mut self, session_id: String) {
+    fn monitor_process(
+        &mut self,
+        session_id: String,
+        stdout_lines: tokio::io::Lines<tokio::io::BufReader<tokio::process::ChildStdout>>,
+    ) {
         let Some(session) = self.sessions.get_mut(&session_id) else {
             return;
         };
-        // We can't move child out while keeping session, so we take it temporarily.
-        // The background task will send a status update via relay_tx.
         let Some(child) = session.child.take() else {
             return;
         };
 
         let relay_tx = self.relay_tx.clone();
         tokio::spawn(async move {
-            monitor_child(child, session_id, relay_tx).await;
+            monitor_child(child, session_id, relay_tx, stdout_lines).await;
         });
     }
 
@@ -184,8 +188,27 @@ async fn monitor_child(
     mut child: Child,
     session_id: String,
     relay_tx: mpsc::UnboundedSender<String>,
+    mut stdout_lines: tokio::io::Lines<tokio::io::BufReader<tokio::process::ChildStdout>>,
 ) {
-    let status = child.wait().await;
+    // Keep draining stdout to avoid blocking the process and to keep the pipe open
+    let status = loop {
+        tokio::select! {
+            line = stdout_lines.next_line() => {
+                match line {
+                    Ok(Some(line)) => {
+                        tracing::debug!(session_id = %session_id, line = %line, "claude stdout");
+                    }
+                    Ok(None) | Err(_) => {
+                        // stdout closed, wait for process to exit
+                        break child.wait().await;
+                    }
+                }
+            }
+            status = child.wait() => {
+                break status;
+            }
+        }
+    };
     let (status_str, error) = match status {
         Ok(s) if s.success() => ("finished", None),
         Ok(s) => ("crashed", Some(format!("process exited with code {}", s.code().unwrap_or(-1)))),
