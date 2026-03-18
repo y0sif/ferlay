@@ -1,15 +1,8 @@
-mod buffer;
-mod pairing;
-mod push;
-mod router;
-mod state;
-mod ws;
-
 use axum::{routing::get, Router};
 use std::sync::Arc;
 use tower_http::cors::CorsLayer;
 
-use crate::state::AppState;
+use furlay_relay::{buffer, state::AppState, ws};
 
 #[tokio::main]
 async fn main() {
