@@ -58,7 +58,7 @@ impl SessionManager {
         let expanded_dir = shellexpand_tilde(&directory);
 
         let child_result = Command::new("claude")
-            .args(["remote-control", "--name", &name, "--verbose"])
+            .args(["remote-control", "--name", &name, "--verbose", "--spawn=same-dir"])
             .current_dir(&expanded_dir)
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
