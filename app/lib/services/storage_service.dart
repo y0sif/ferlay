@@ -1,0 +1,50 @@
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'dart:math';
+
+class StorageService {
+  static const _storage = FlutterSecureStorage();
+
+  static const _keyRelayUrl = 'relay_url';
+  static const _keyDeviceId = 'device_id';
+  static const _keyPairedDeviceId = 'paired_device_id';
+
+  static Future<String?> getRelayUrl() => _storage.read(key: _keyRelayUrl);
+  static Future<void> setRelayUrl(String url) =>
+      _storage.write(key: _keyRelayUrl, value: url);
+
+  static Future<String> getDeviceId() async {
+    var id = await _storage.read(key: _keyDeviceId);
+    if (id == null) {
+      id = _generateUuid();
+      await _storage.write(key: _keyDeviceId, value: id);
+    }
+    return id;
+  }
+
+  static Future<String?> getPairedDeviceId() =>
+      _storage.read(key: _keyPairedDeviceId);
+  static Future<void> setPairedDeviceId(String id) =>
+      _storage.write(key: _keyPairedDeviceId, value: id);
+
+  static Future<bool> isPaired() async {
+    final relayUrl = await getRelayUrl();
+    final pairedId = await getPairedDeviceId();
+    return relayUrl != null && pairedId != null;
+  }
+
+  static Future<void> clearPairing() async {
+    await _storage.delete(key: _keyRelayUrl);
+    await _storage.delete(key: _keyPairedDeviceId);
+  }
+
+  static String _generateUuid() {
+    final rng = Random.secure();
+    final bytes = List<int>.generate(16, (_) => rng.nextInt(256));
+    bytes[6] = (bytes[6] & 0x0f) | 0x40;
+    bytes[8] = (bytes[8] & 0x3f) | 0x80;
+    final hex = bytes.map((b) => b.toRadixString(16).padLeft(2, '0')).join();
+    return '${hex.substring(0, 8)}-${hex.substring(8, 12)}-'
+        '${hex.substring(12, 16)}-${hex.substring(16, 20)}-'
+        '${hex.substring(20)}';
+  }
+}
