@@ -9,6 +9,7 @@ use crate::session::SessionManager;
 use crate::{pairing, relay};
 
 /// Runs the main daemon loop: connects to relay, handles commands, manages sessions.
+/// If not yet paired, runs the pairing flow first on the same connection.
 pub async fn run(config: Config, relay_url: String) {
     // Channels bridging relay WebSocket ↔ daemon logic
     let (outgoing_tx, outgoing_rx) = mpsc::unbounded_channel::<String>();
@@ -54,6 +55,19 @@ pub async fn run(config: Config, relay_url: String) {
         }
     }
 
+    // Run pairing flow on this connection (reuses the daemon's relay registration)
+    tracing::info!("Starting pairing flow...");
+    match pairing::run_pairing(&relay_url, &config.device_id, &outgoing_tx, &mut incoming_rx).await
+    {
+        Ok(()) => {
+            tracing::info!("Pairing complete, entering main loop");
+        }
+        Err(e) => {
+            tracing::error!(error = %e, "Pairing failed");
+            return;
+        }
+    }
+
     // Main message loop
     let mut session_manager = SessionManager::new(outgoing_tx.clone());
 
@@ -87,42 +101,6 @@ pub async fn run(config: Config, relay_url: String) {
     }
 
     tracing::info!("Relay connection lost. Daemon exiting.");
-}
-
-/// Runs the pairing flow (used by `ferlay pair` subcommand).
-pub async fn run_pair(config: Config, relay_url: String) {
-    let (outgoing_tx, outgoing_rx) = mpsc::unbounded_channel::<String>();
-    let (incoming_tx, mut incoming_rx) = mpsc::unbounded_channel::<String>();
-
-    let relay_url_clone = relay_url.clone();
-    tokio::spawn(async move {
-        relay::connection_loop(relay_url_clone, outgoing_rx, incoming_tx).await;
-    });
-
-    // Register first
-    let register = ControlMessage::Register {
-        device_id: config.device_id.clone(),
-        fcm_token: None,
-    };
-    let _ = outgoing_tx.send(serde_json::to_string(&register).unwrap());
-
-    // Wait for registration
-    loop {
-        let Some(raw) = incoming_rx.recv().await else {
-            eprintln!("Connection to relay failed");
-            return;
-        };
-        if let Ok(ControlMessage::Registered { .. }) = serde_json::from_str(&raw) {
-            break;
-        }
-    }
-
-    // Run pairing
-    match pairing::run_pairing(&relay_url, &config.device_id, &outgoing_tx, &mut incoming_rx).await
-    {
-        Ok(()) => println!("Pairing complete! You can now start the daemon with `ferlay daemon`"),
-        Err(e) => eprintln!("Pairing failed: {e}"),
-    }
 }
 
 async fn handle_app_message(

@@ -21,11 +21,8 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Commands {
-    /// Start the daemon (connects to relay, listens for commands)
+    /// Start the daemon (pairs if needed, then connects to relay and listens for commands)
     Daemon,
-
-    /// Display QR code for mobile pairing
-    Pair,
 
     /// Show daemon status + active sessions
     Status,
@@ -82,9 +79,6 @@ async fn main() {
         Commands::Daemon => {
             tracing::info!(relay = %relay_url, device_id = %cfg.device_id, "Starting daemon");
             daemon::run(cfg, relay_url).await;
-        }
-        Commands::Pair => {
-            daemon::run_pair(cfg, relay_url).await;
         }
         Commands::Status => {
             // Check health endpoint
