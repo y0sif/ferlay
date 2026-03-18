@@ -1,4 +1,5 @@
 use axum::{routing::get, Json, Router};
+use std::sync::Arc;
 use tokio::sync::mpsc;
 
 use furlay_shared::messages::ControlMessage;
@@ -55,26 +56,27 @@ pub async fn run(config: Config, relay_url: String) {
         }
     }
 
-    // Run pairing flow on this connection (reuses the daemon's relay registration)
+    // Run pairing flow with key exchange
     tracing::info!("Starting pairing flow...");
-    match pairing::run_pairing(&relay_url, &config.device_id, &outgoing_tx, &mut incoming_rx).await
+    let crypto = match pairing::run_pairing(&relay_url, &config.device_id, &outgoing_tx, &mut incoming_rx).await
     {
-        Ok(()) => {
-            tracing::info!("Pairing complete, entering main loop");
+        Ok(crypto) => {
+            tracing::info!("Pairing complete with E2E encryption");
+            Some(Arc::new(crypto))
         }
         Err(e) => {
             tracing::error!(error = %e, "Pairing failed");
             return;
         }
-    }
+    };
 
     // Main message loop
-    let mut session_manager = SessionManager::new(outgoing_tx.clone());
+    let mut session_manager = SessionManager::new(outgoing_tx.clone(), crypto.clone());
 
     tracing::info!("Daemon running. Waiting for commands...");
 
     while let Some(raw) = incoming_rx.recv().await {
-        // Try as ControlMessage first (pairing, etc.)
+        // Try as ControlMessage first (pairing, etc. — never encrypted)
         if let Ok(ctrl) = serde_json::from_str::<ControlMessage>(&raw) {
             match ctrl {
                 ControlMessage::Paired { paired_with } => {
@@ -89,7 +91,37 @@ pub async fn run(config: Config, relay_url: String) {
             }
         }
 
-        // Try as AppMessage (commands from phone, delivered as relay payload)
+        // Try as encrypted relay payload (JSON string containing base64 blob)
+        if let Some(ref crypto) = crypto {
+            if let Ok(serde_json::Value::String(encrypted)) =
+                serde_json::from_str::<serde_json::Value>(&raw)
+            {
+                match crypto.decrypt(&encrypted) {
+                    Ok(plaintext) => {
+                        let plaintext_str = String::from_utf8_lossy(&plaintext);
+                        match serde_json::from_str::<AppMessage>(&plaintext_str) {
+                            Ok(app_msg) => {
+                                handle_app_message(
+                                    &mut session_manager,
+                                    app_msg,
+                                    &health_sessions,
+                                )
+                                .await;
+                                continue;
+                            }
+                            Err(e) => {
+                                tracing::debug!(error = %e, "Decrypted but not an AppMessage");
+                            }
+                        }
+                    }
+                    Err(e) => {
+                        tracing::debug!(error = %e, "Decryption failed, trying plaintext");
+                    }
+                }
+            }
+        }
+
+        // Fallback: try as unencrypted AppMessage
         match serde_json::from_str::<AppMessage>(&raw) {
             Ok(app_msg) => {
                 handle_app_message(&mut session_manager, app_msg, &health_sessions).await;
@@ -122,10 +154,11 @@ async fn handle_app_message(
             // Send list back via relay
             session_manager.send_sessions_list(sessions);
         }
-        // These are outgoing messages — ignore if received
+        // These are outgoing messages or handled elsewhere — ignore if received
         AppMessage::SessionReady { .. }
         | AppMessage::SessionStatus { .. }
-        | AppMessage::SessionsList { .. } => {}
+        | AppMessage::SessionsList { .. }
+        | AppMessage::KeyExchange { .. } => {}
     }
 }
 

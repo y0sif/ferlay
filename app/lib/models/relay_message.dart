@@ -42,6 +42,15 @@ class ControlMessage {
       data: {'type': 'relay', 'payload': payload},
     );
   }
+
+  /// Sends an encrypted payload as a relay message.
+  /// The payload is a base64-encoded encrypted string.
+  static ControlMessage relayEncrypted(String encryptedPayload) {
+    return ControlMessage(
+      type: 'relay',
+      data: {'type': 'relay', 'payload': encryptedPayload},
+    );
+  }
 }
 
 /// App-level messages (start_session, stop_session, etc.).
@@ -67,5 +76,12 @@ class AppMessage {
 
   static Map<String, dynamic> listSessions() {
     return {'type': 'list_sessions'};
+  }
+
+  static Map<String, dynamic> keyExchange(String publicKey) {
+    return {
+      'type': 'key_exchange',
+      'public_key': publicKey,
+    };
   }
 }

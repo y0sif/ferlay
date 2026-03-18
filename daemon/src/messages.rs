@@ -31,6 +31,9 @@ pub enum AppMessage {
 
     #[serde(rename = "sessions_list")]
     SessionsList { sessions: Vec<SessionInfo> },
+
+    #[serde(rename = "key_exchange")]
+    KeyExchange { public_key: String },
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

@@ -1,5 +1,6 @@
 mod capture;
 mod config;
+mod crypto;
 mod daemon;
 mod messages;
 mod pairing;

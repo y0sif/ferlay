@@ -38,6 +38,7 @@ class _PairingScreenState extends ConsumerState<PairingScreen> {
       final json = jsonDecode(data) as Map<String, dynamic>;
       final relay = json['relay'] as String?;
       final code = json['code'] as String?;
+      final pk = json['pk'] as String?; // Daemon's X25519 public key
 
       if (relay == null || code == null) {
         setState(() {
@@ -47,7 +48,7 @@ class _PairingScreenState extends ConsumerState<PairingScreen> {
         return;
       }
 
-      await _doPairing(relay, code);
+      await _doPairing(relay, code, daemonPublicKey: pk);
     } catch (e) {
       setState(() {
         _error = 'Invalid QR code: $e';
@@ -70,11 +71,15 @@ class _PairingScreenState extends ConsumerState<PairingScreen> {
       _error = null;
     });
 
+    // Manual pairing doesn't include public key — no E2E encryption
     await _doPairing(relay, code);
   }
 
-  Future<void> _doPairing(String relayUrl, String code) async {
-    await ref.read(authProvider.notifier).startPairing(relayUrl, code);
+  Future<void> _doPairing(String relayUrl, String code,
+      {String? daemonPublicKey}) async {
+    await ref
+        .read(authProvider.notifier)
+        .startPairing(relayUrl, code, daemonPublicKeyB64: daemonPublicKey);
 
     if (!mounted) return;
 
@@ -180,6 +185,13 @@ class _PairingScreenState extends ConsumerState<PairingScreen> {
                     child: CircularProgressIndicator(strokeWidth: 2),
                   )
                 : const Text('Pair'),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Manual pairing does not support E2E encryption.\nUse QR scanning for encrypted sessions.',
+            style: theme.textTheme.bodySmall
+                ?.copyWith(color: theme.colorScheme.outline),
+            textAlign: TextAlign.center,
           ),
           const SizedBox(height: 12),
           TextButton(

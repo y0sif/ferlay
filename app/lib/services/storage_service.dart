@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'dart:math';
 
@@ -7,6 +9,7 @@ class StorageService {
   static const _keyRelayUrl = 'relay_url';
   static const _keyDeviceId = 'device_id';
   static const _keyPairedDeviceId = 'paired_device_id';
+  static const _keyEncryptionKey = 'encryption_key';
 
   static Future<String?> getRelayUrl() => _storage.read(key: _keyRelayUrl);
   static Future<void> setRelayUrl(String url) =>
@@ -35,7 +38,23 @@ class StorageService {
   static Future<void> clearPairing() async {
     await _storage.delete(key: _keyRelayUrl);
     await _storage.delete(key: _keyPairedDeviceId);
+    await _storage.delete(key: _keyEncryptionKey);
   }
+
+  /// Stores the derived AES-256-GCM key as base64.
+  static Future<void> setEncryptionKey(List<int> keyBytes) =>
+      _storage.write(key: _keyEncryptionKey, value: base64Encode(keyBytes));
+
+  /// Loads the stored AES key, or null if not set.
+  static Future<List<int>?> getEncryptionKey() async {
+    final encoded = await _storage.read(key: _keyEncryptionKey);
+    if (encoded == null) return null;
+    return base64Decode(encoded);
+  }
+
+  /// Clears only the encryption key.
+  static Future<void> clearEncryptionKey() =>
+      _storage.delete(key: _keyEncryptionKey);
 
   static String _generateUuid() {
     final rng = Random.secure();

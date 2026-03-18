@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:web_socket_channel/web_socket_channel.dart';
 
 import '../models/relay_message.dart';
+import 'crypto_service.dart';
 import 'storage_service.dart';
 
 enum RelayConnectionState { disconnected, connecting, connected }
@@ -17,12 +18,19 @@ class RelayService {
   Timer? _reconnectTimer;
   bool _disposed = false;
 
+  CryptoService? _crypto;
+
   final _incomingController = StreamController<Map<String, dynamic>>.broadcast();
   final _stateController = StreamController<RelayConnectionState>.broadcast();
 
   Stream<Map<String, dynamic>> get incoming => _incomingController.stream;
   Stream<RelayConnectionState> get stateStream => _stateController.stream;
   RelayConnectionState get state => _state;
+
+  /// Sets the crypto service for encrypting/decrypting relay payloads.
+  void setCrypto(CryptoService crypto) {
+    _crypto = crypto;
+  }
 
   Future<void> connect(String relayUrl) async {
     _relayUrl = relayUrl;
@@ -64,16 +72,54 @@ class RelayService {
 
   void _handleMessage(String raw) {
     try {
-      final json = jsonDecode(raw) as Map<String, dynamic>;
-      _incomingController.add(json);
+      final decoded = jsonDecode(raw);
+
+      if (decoded is Map<String, dynamic>) {
+        // Unencrypted JSON object (control messages or legacy app messages)
+        _incomingController.add(decoded);
+      } else if (decoded is String && _crypto != null && _crypto!.isReady) {
+        // Encrypted relay payload (JSON string containing base64 blob)
+        _decryptAndEmit(decoded);
+      }
     } catch (_) {}
+  }
+
+  Future<void> _decryptAndEmit(String encrypted) async {
+    try {
+      final plaintext = await _crypto!.decrypt(encrypted);
+      final json = jsonDecode(plaintext) as Map<String, dynamic>;
+      _incomingController.add(json);
+    } catch (e) {
+      // Decryption failed — could be a non-encrypted string, ignore
+    }
   }
 
   void send(ControlMessage msg) {
     _channel?.sink.add(msg.toJson());
   }
 
+  /// Sends an app-level message via relay, encrypting if crypto is available.
   void sendRelay(Map<String, dynamic> payload) {
+    if (_crypto != null && _crypto!.isReady) {
+      _sendEncrypted(payload);
+    } else {
+      send(ControlMessage.relay(payload));
+    }
+  }
+
+  Future<void> _sendEncrypted(Map<String, dynamic> payload) async {
+    try {
+      final plaintext = jsonEncode(payload);
+      final encrypted = await _crypto!.encrypt(plaintext);
+      send(ControlMessage.relayEncrypted(encrypted));
+    } catch (e) {
+      // Fallback to unencrypted on error
+      send(ControlMessage.relay(payload));
+    }
+  }
+
+  /// Sends an unencrypted relay message (used for key exchange before encryption is set up).
+  void sendRelayUnencrypted(Map<String, dynamic> payload) {
     send(ControlMessage.relay(payload));
   }
 

@@ -26,6 +26,9 @@ dependencies:
   # State management
   flutter_riverpod: ^3.3.1
 
+  # E2E encryption (X25519 + AES-256-GCM + HKDF)
+  cryptography: ^2.7.0
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

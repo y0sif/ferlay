@@ -1,9 +1,11 @@
 use std::collections::HashMap;
 use std::process::Stdio;
+use std::sync::Arc;
 use tokio::process::{Child, Command};
 use tokio::sync::mpsc;
 
 use crate::capture;
+use crate::crypto::CryptoState;
 use crate::messages::{AppMessage, SessionInfo};
 
 #[derive(Debug, Clone, PartialEq)]
@@ -40,13 +42,18 @@ struct Session {
 pub struct SessionManager {
     sessions: HashMap<String, Session>,
     relay_tx: mpsc::UnboundedSender<String>,
+    crypto: Option<Arc<CryptoState>>,
 }
 
 impl SessionManager {
-    pub fn new(relay_tx: mpsc::UnboundedSender<String>) -> Self {
+    pub fn new(
+        relay_tx: mpsc::UnboundedSender<String>,
+        crypto: Option<Arc<CryptoState>>,
+    ) -> Self {
         Self {
             sessions: HashMap::new(),
             relay_tx,
+            crypto,
         }
     }
 
@@ -145,7 +152,6 @@ impl SessionManager {
     }
 
     /// Marks a session as finished/crashed when its process exits.
-    /// Called after URL is captured and session is in Ready state.
     fn monitor_process(
         &mut self,
         session_id: String,
@@ -159,8 +165,9 @@ impl SessionManager {
         };
 
         let relay_tx = self.relay_tx.clone();
+        let crypto = self.crypto.clone();
         tokio::spawn(async move {
-            monitor_child(child, session_id, relay_tx, stdout_lines).await;
+            monitor_child(child, session_id, relay_tx, crypto, stdout_lines).await;
         });
     }
 
@@ -177,17 +184,36 @@ impl SessionManager {
     }
 
     fn send_relay(&self, msg: &AppMessage) {
-        let payload = serde_json::to_value(msg).unwrap();
-        let control = furlay_shared::messages::ControlMessage::Relay { payload };
-        let json = serde_json::to_string(&control).unwrap();
+        let json = send_encrypted_relay(msg, self.crypto.as_deref());
         let _ = self.relay_tx.send(json);
     }
+}
+
+/// Encrypts an AppMessage and wraps it in a ControlMessage::Relay.
+/// If crypto is None, sends the payload unencrypted.
+fn send_encrypted_relay(msg: &AppMessage, crypto: Option<&CryptoState>) -> String {
+    let payload = if let Some(crypto) = crypto {
+        let plaintext = serde_json::to_string(msg).unwrap();
+        match crypto.encrypt(plaintext.as_bytes()) {
+            Ok(encrypted) => serde_json::Value::String(encrypted),
+            Err(e) => {
+                tracing::error!(error = %e, "Encryption failed, sending unencrypted");
+                serde_json::to_value(msg).unwrap()
+            }
+        }
+    } else {
+        serde_json::to_value(msg).unwrap()
+    };
+
+    let control = furlay_shared::messages::ControlMessage::Relay { payload };
+    serde_json::to_string(&control).unwrap()
 }
 
 async fn monitor_child(
     mut child: Child,
     session_id: String,
     relay_tx: mpsc::UnboundedSender<String>,
+    crypto: Option<Arc<CryptoState>>,
     mut stdout_lines: tokio::io::Lines<tokio::io::BufReader<tokio::process::ChildStdout>>,
 ) {
     // Keep draining stdout to avoid blocking the process and to keep the pipe open
@@ -211,7 +237,13 @@ async fn monitor_child(
     };
     let (status_str, error) = match status {
         Ok(s) if s.success() => ("finished", None),
-        Ok(s) => ("crashed", Some(format!("process exited with code {}", s.code().unwrap_or(-1)))),
+        Ok(s) => (
+            "crashed",
+            Some(format!(
+                "process exited with code {}",
+                s.code().unwrap_or(-1)
+            )),
+        ),
         Err(e) => ("crashed", Some(format!("wait error: {e}"))),
     };
 
@@ -222,9 +254,7 @@ async fn monitor_child(
         status: status_str.to_string(),
         error,
     };
-    let payload = serde_json::to_value(&msg).unwrap();
-    let control = furlay_shared::messages::ControlMessage::Relay { payload };
-    let json = serde_json::to_string(&control).unwrap();
+    let json = send_encrypted_relay(&msg, crypto.as_deref());
     let _ = relay_tx.send(json);
 }
 
