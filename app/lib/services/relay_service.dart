@@ -90,6 +90,16 @@ class RelayService {
   }
 
   Future<void> connect(String relayUrl) async {
+    // Close existing connection first to avoid zombie WebSockets.
+    // Without this, calling connect() twice (e.g. _checkPairing + startPairing)
+    // creates two WebSocket connections — the relay only routes to the latest one
+    // but the old listener is stale, causing messages to be lost.
+    _reconnectTimer?.cancel();
+    if (_channel != null) {
+      _channel!.sink.close();
+      _channel = null;
+    }
+
     _relayUrl = relayUrl;
     _deviceId = await StorageService.getDeviceId();
     _pairedDeviceId = await StorageService.getPairedDeviceId();
@@ -218,11 +228,13 @@ class RelayService {
   }
 
   /// Force-reconnect the WebSocket (e.g. from a Retry button or app foreground).
-  void reconnect() {
+  Future<void> reconnect() async {
     _reconnectTimer?.cancel();
     _channel?.sink.close();
     _channel = null;
     _backoff = 1;
+    // Reload paired device ID in case it changed
+    _pairedDeviceId = await StorageService.getPairedDeviceId();
     _doConnect();
   }
 
