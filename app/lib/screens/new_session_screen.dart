@@ -18,6 +18,7 @@ class NewSessionScreen extends ConsumerStatefulWidget {
 }
 
 class _NewSessionScreenState extends ConsumerState<NewSessionScreen> {
+  final _formKey = GlobalKey<FormState>();
   final _directoryController = TextEditingController(text: '~/Projects/');
   final _nameController = TextEditingController();
   bool _loading = false;
@@ -31,11 +32,22 @@ class _NewSessionScreenState extends ConsumerState<NewSessionScreen> {
     super.dispose();
   }
 
+  String? _validateDirectory(String? value) {
+    if (value == null || value.trim().isEmpty) {
+      return 'Directory is required';
+    }
+    final trimmed = value.trim();
+    if (!trimmed.startsWith('/') && !trimmed.startsWith('~/')) {
+      return 'Directory must be an absolute path (start with / or ~/)';
+    }
+    return null;
+  }
+
   void _startSession() {
+    if (!_formKey.currentState!.validate()) return;
+
     final directory = _directoryController.text.trim();
     final name = _nameController.text.trim();
-
-    if (directory.isEmpty) return;
 
     final connState = ref.read(connectionProvider);
     if (!connState.canStartSession) {
@@ -113,56 +125,61 @@ class _NewSessionScreenState extends ConsumerState<NewSessionScreen> {
       appBar: AppBar(title: const Text('New Session')),
       body: Padding(
         padding: const EdgeInsets.all(24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            TextField(
-              controller: _directoryController,
-              decoration: const InputDecoration(
-                labelText: 'Directory',
-                hintText: '~/Projects/my-app',
-                prefixIcon: Icon(Icons.folder),
-                border: OutlineInputBorder(),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              TextFormField(
+                controller: _directoryController,
+                validator: _validateDirectory,
+                autovalidateMode: AutovalidateMode.onUserInteraction,
+                decoration: const InputDecoration(
+                  labelText: 'Directory',
+                  hintText: '~/Projects/my-app',
+                  prefixIcon: Icon(Icons.folder),
+                  border: OutlineInputBorder(),
+                ),
               ),
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: _nameController,
-              decoration: const InputDecoration(
-                labelText: 'Session Name (optional)',
-                hintText: 'refactor',
-                helperText: 'Defaults to "session" if empty',
-                prefixIcon: Icon(Icons.label),
-                border: OutlineInputBorder(),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: _nameController,
+                decoration: const InputDecoration(
+                  labelText: 'Session Name (optional)',
+                  hintText: 'refactor',
+                  helperText: 'Defaults to "session" if empty',
+                  prefixIcon: Icon(Icons.label),
+                  border: OutlineInputBorder(),
+                ),
               ),
-            ),
-            const SizedBox(height: 24),
-            FilledButton.icon(
-              onPressed: canStart ? _startSession : null,
-              icon: _loading
-                  ? const SizedBox(
-                      height: 20,
-                      width: 20,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Icon(Icons.play_arrow),
-              label: Text(_loading
-                  ? 'Starting...'
-                  : connState.canStartSession
-                      ? 'Start Session'
-                      : connState.disabledReason ?? 'Cannot start'),
-            ),
-            if (!connState.canStartSession && !_loading) ...[
-              const SizedBox(height: 8),
-              Text(
-                connState.disabledReason ?? 'Cannot start session',
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: Theme.of(context).colorScheme.error,
-                    ),
-                textAlign: TextAlign.center,
+              const SizedBox(height: 24),
+              FilledButton.icon(
+                onPressed: canStart ? _startSession : null,
+                icon: _loading
+                    ? const SizedBox(
+                        height: 20,
+                        width: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.play_arrow),
+                label: Text(_loading
+                    ? 'Starting...'
+                    : connState.canStartSession
+                        ? 'Start Session'
+                        : connState.disabledReason ?? 'Cannot start'),
               ),
+              if (!connState.canStartSession && !_loading) ...[
+                const SizedBox(height: 8),
+                Text(
+                  connState.disabledReason ?? 'Cannot start session',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Theme.of(context).colorScheme.error,
+                      ),
+                  textAlign: TextAlign.center,
+                ),
+              ],
             ],
-          ],
+          ),
         ),
       ),
     );
