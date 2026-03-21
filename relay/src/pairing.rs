@@ -32,3 +32,52 @@ pub fn validate_pairing_code(state: &AppState, code: &str) -> Option<String> {
         None
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn pairing_code_is_six_digits() {
+        let code = generate_pairing_code();
+        assert_eq!(code.len(), 6);
+        assert!(code.chars().all(|c| c.is_ascii_digit()));
+    }
+
+    #[test]
+    fn create_and_validate_pairing_code() {
+        let state = AppState::new();
+        let code = create_pairing_code(&state, "device-1");
+        let result = validate_pairing_code(&state, &code);
+        assert_eq!(result, Some("device-1".to_string()));
+    }
+
+    #[test]
+    fn pairing_code_consumed_after_validation() {
+        let state = AppState::new();
+        let code = create_pairing_code(&state, "device-1");
+        let _ = validate_pairing_code(&state, &code);
+        // Second validation should fail — code was consumed
+        assert_eq!(validate_pairing_code(&state, &code), None);
+    }
+
+    #[test]
+    fn invalid_code_returns_none() {
+        let state = AppState::new();
+        assert_eq!(validate_pairing_code(&state, "BADCODE"), None);
+    }
+
+    #[test]
+    fn expired_code_returns_none() {
+        let state = AppState::new();
+        // Insert a code that's already expired
+        state.pairing_codes.insert(
+            "expired".to_string(),
+            PairingEntry {
+                device_id: "dev".to_string(),
+                expires_at: Instant::now() - Duration::from_secs(1),
+            },
+        );
+        assert_eq!(validate_pairing_code(&state, "expired"), None);
+    }
+}

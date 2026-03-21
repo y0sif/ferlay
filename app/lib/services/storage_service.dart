@@ -56,6 +56,16 @@ class StorageService {
   static Future<void> clearEncryptionKey() =>
       _storage.delete(key: _keyEncryptionKey);
 
+  static const _keySessions = 'sessions_cache';
+
+  /// Persists the sessions list as JSON for offline access.
+  static Future<void> setSessions(String sessionsJson) =>
+      _storage.write(key: _keySessions, value: sessionsJson);
+
+  /// Loads persisted sessions list, or null if none.
+  static Future<String?> getSessions() =>
+      _storage.read(key: _keySessions);
+
   static String _generateUuid() {
     final rng = Random.secure();
     final bytes = List<int>.generate(16, (_) => rng.nextInt(256));
