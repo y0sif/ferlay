@@ -12,3 +12,8 @@ final relayStateProvider = StreamProvider<RelayConnectionState>((ref) {
   final relay = ref.watch(relayServiceProvider);
   return relay.stateStream;
 });
+
+final encryptionStateProvider = StreamProvider<EncryptionState>((ref) {
+  final relay = ref.watch(relayServiceProvider);
+  return relay.encryptionStateStream;
+});

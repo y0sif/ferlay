@@ -9,6 +9,18 @@ import 'storage_service.dart';
 
 enum RelayConnectionState { disconnected, connecting, connected }
 
+/// Encryption lifecycle state, exposed to the UI.
+enum EncryptionState {
+  /// No encryption keys established yet.
+  notEstablished,
+  /// Key exchange in progress.
+  establishing,
+  /// Encryption verified and active.
+  established,
+  /// Key derivation or verification failed.
+  failed,
+}
+
 class RelayService {
   WebSocketChannel? _channel;
   RelayConnectionState _state = RelayConnectionState.disconnected;
@@ -19,19 +31,41 @@ class RelayService {
   bool _disposed = false;
 
   CryptoService? _crypto;
+  EncryptionState _encryptionState = EncryptionState.notEstablished;
 
   final _incomingController = StreamController<Map<String, dynamic>>.broadcast();
   final _stateController = StreamController<RelayConnectionState>.broadcast();
   final _errorController = StreamController<String>.broadcast();
+  final _encryptionStateController = StreamController<EncryptionState>.broadcast();
 
   Stream<Map<String, dynamic>> get incoming => _incomingController.stream;
   Stream<RelayConnectionState> get stateStream => _stateController.stream;
   Stream<String> get errors => _errorController.stream;
+  Stream<EncryptionState> get encryptionStateStream => _encryptionStateController.stream;
   RelayConnectionState get state => _state;
+  EncryptionState get encryptionState => _encryptionState;
 
   /// Sets the crypto service for encrypting/decrypting relay payloads.
   void setCrypto(CryptoService crypto) {
     _crypto = crypto;
+    _setEncryptionState(EncryptionState.establishing);
+  }
+
+  /// Marks encryption as verified and working.
+  void markEncryptionEstablished() {
+    _setEncryptionState(EncryptionState.established);
+  }
+
+  /// Marks encryption as failed.
+  void markEncryptionFailed() {
+    _setEncryptionState(EncryptionState.failed);
+  }
+
+  void _setEncryptionState(EncryptionState s) {
+    _encryptionState = s;
+    if (!_encryptionStateController.isClosed) {
+      _encryptionStateController.add(s);
+    }
   }
 
   Future<void> connect(String relayUrl) async {
@@ -168,5 +202,6 @@ class RelayService {
     _incomingController.close();
     _stateController.close();
     _errorController.close();
+    _encryptionStateController.close();
   }
 }

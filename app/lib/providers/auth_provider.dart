@@ -31,6 +31,7 @@ class AuthNotifier extends Notifier<PairingState> {
         final hasKey = await crypto.loadKey();
         if (hasKey) {
           relay.setCrypto(crypto);
+          relay.markEncryptionEstablished();
         }
 
         relay.connect(relayUrl);
@@ -140,9 +141,11 @@ class AuthNotifier extends Notifier<PairingState> {
     final verified = await _waitForEncryptionVerification(relay);
     if (verified) {
       dev.log('E2E encryption verified successfully', name: 'Ferlay');
+      relay.markEncryptionEstablished();
       state = PairingState.paired;
     } else {
       dev.log('E2E encryption verification failed', name: 'Ferlay');
+      relay.markEncryptionFailed();
       await crypto.clearKey();
       await StorageService.clearPairing();
       state = PairingState.unpaired;

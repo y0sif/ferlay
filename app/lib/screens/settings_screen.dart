@@ -12,6 +12,7 @@ class SettingsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final relayState = ref.watch(relayStateProvider);
+    final encryptionState = ref.watch(encryptionStateProvider);
 
     return Scaffold(
       appBar: AppBar(title: const Text('Settings')),
@@ -37,6 +38,34 @@ class SettingsScreen extends ConsumerWidget {
                 RelayConnectionState.connected => 'Connected',
                 RelayConnectionState.connecting => 'Connecting...',
                 RelayConnectionState.disconnected => 'Disconnected',
+              },
+              loading: () => 'Unknown',
+              error: (_, _) => 'Error',
+            )),
+          ),
+
+          // Encryption status
+          ListTile(
+            leading: Icon(
+              Icons.lock,
+              color: encryptionState.when(
+                data: (s) => switch (s) {
+                  EncryptionState.established => Colors.green,
+                  EncryptionState.establishing => Colors.amber,
+                  EncryptionState.notEstablished => Colors.grey,
+                  EncryptionState.failed => Colors.red,
+                },
+                loading: () => Colors.grey,
+                error: (_, _) => Colors.red,
+              ),
+            ),
+            title: const Text('E2E Encryption'),
+            subtitle: Text(encryptionState.when(
+              data: (s) => switch (s) {
+                EncryptionState.established => 'Verified and active',
+                EncryptionState.establishing => 'Key exchange in progress...',
+                EncryptionState.notEstablished => 'Not established',
+                EncryptionState.failed => 'Failed',
               },
               loading: () => 'Unknown',
               error: (_, _) => 'Error',
