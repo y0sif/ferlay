@@ -1,0 +1,13 @@
+[Unit]
+Description=Ferlay Daemon
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=%h/.local/bin/ferlay daemon
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=default.target
