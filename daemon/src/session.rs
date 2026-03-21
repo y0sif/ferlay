@@ -175,6 +175,11 @@ impl SessionManager {
         self.send_relay(&AppMessage::SessionsList { sessions });
     }
 
+    /// Sends an arbitrary AppMessage back to the app (used for ping/pong etc.).
+    pub fn send_message(&self, msg: &AppMessage) {
+        self.send_relay(msg);
+    }
+
     fn send_status(&self, session_id: &str, status: &str, error: Option<String>) {
         self.send_relay(&AppMessage::SessionStatus {
             session_id: session_id.to_string(),

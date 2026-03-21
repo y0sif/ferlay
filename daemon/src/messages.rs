@@ -40,6 +40,12 @@ pub enum AppMessage {
 
     #[serde(rename = "encryption_verify_ack")]
     EncryptionVerifyAck { challenge: String },
+
+    #[serde(rename = "ping")]
+    Ping { timestamp: u64 },
+
+    #[serde(rename = "pong")]
+    Pong { timestamp: u64 },
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

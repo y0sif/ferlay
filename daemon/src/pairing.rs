@@ -38,8 +38,8 @@ pub async fn run_pairing(
 
         match serde_json::from_str::<ControlMessage>(&raw) {
             Ok(ControlMessage::PairingCode { code }) => break code,
-            Ok(ControlMessage::Error { message }) => {
-                return Err(format!("Relay error: {message}"));
+            Ok(ControlMessage::Error { code, message }) => {
+                return Err(format!("Relay error [{code}]: {message}"));
             }
             _ => continue,
         }
@@ -80,7 +80,7 @@ pub async fn run_pairing(
                     }
                 }
             }
-            Ok(ControlMessage::Error { message }) => {
+            Ok(ControlMessage::Error { message, .. }) => {
                 return Err(format!("Pairing failed: {message}"));
             }
             _ => continue,

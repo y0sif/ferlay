@@ -95,4 +95,11 @@ class AppMessage {
       'challenge': challenge,
     };
   }
+
+  static Map<String, dynamic> ping(int timestamp) {
+    return {
+      'type': 'ping',
+      'timestamp': timestamp,
+    };
+  }
 }

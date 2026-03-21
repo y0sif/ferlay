@@ -49,8 +49,8 @@ pub async fn run(config: Config, relay_url: String) {
                 tracing::info!(device_id = %device_id, "Registered with relay");
                 break;
             }
-            Ok(ControlMessage::Error { message }) => {
-                tracing::error!(error = %message, "Registration failed");
+            Ok(ControlMessage::Error { code, message }) => {
+                tracing::error!(code = %code, error = %message, "Registration failed");
                 return;
             }
             _ => continue,
@@ -93,8 +93,8 @@ pub async fn run(config: Config, relay_url: String) {
                     tracing::info!(paired_with = %paired_with, "Device paired");
                     continue;
                 }
-                ControlMessage::Error { message } => {
-                    tracing::warn!(error = %message, "Relay error");
+                ControlMessage::Error { code, message } => {
+                    tracing::warn!(code = %code, error = %message, "Relay error");
                     continue;
                 }
                 _ => {}
@@ -226,13 +226,18 @@ async fn handle_app_message(
             // Send list back via relay
             session_manager.send_sessions_list(sessions);
         }
+        AppMessage::Ping { timestamp } => {
+            // Respond with Pong carrying the same timestamp
+            session_manager.send_message(&AppMessage::Pong { timestamp });
+        }
         // These are outgoing messages or handled elsewhere — ignore if received
         AppMessage::SessionReady { .. }
         | AppMessage::SessionStatus { .. }
         | AppMessage::SessionsList { .. }
         | AppMessage::KeyExchange { .. }
         | AppMessage::EncryptionVerify { .. }
-        | AppMessage::EncryptionVerifyAck { .. } => {}
+        | AppMessage::EncryptionVerifyAck { .. }
+        | AppMessage::Pong { .. } => {}
     }
 }
 
