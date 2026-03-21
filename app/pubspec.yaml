@@ -29,6 +29,9 @@ dependencies:
   # E2E encryption (X25519 + AES-256-GCM + HKDF)
   cryptography: ^2.7.0
 
+  # HMAC-SHA256 for manual HKDF implementation (matching Rust output)
+  crypto: ^3.0.6
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
