@@ -3,8 +3,11 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../models/connection_state.dart';
 import '../models/session.dart';
+import '../providers/connection_provider.dart';
 import '../providers/sessions_provider.dart';
+import '../services/relay_service.dart';
 import '../widgets/status_badge.dart';
 
 class SessionDetailScreen extends ConsumerWidget {
@@ -14,13 +17,18 @@ class SessionDetailScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final arg = ModalRoute.of(context)!.settings.arguments as Session;
     final theme = Theme.of(context);
+    final connState = ref.watch(connectionProvider);
 
     // Watch for live updates
     final sessions = ref.watch(sessionsProvider);
     final session = sessions.where((s) => s.id == arg.id).firstOrNull ?? arg;
 
+    final canSendCommands = connState.relay == RelayConnectionState.connected &&
+        connState.daemon != DaemonState.offline;
+
     return Scaffold(
-      appBar: AppBar(title: Text(session.name.isNotEmpty ? session.name : 'Session')),
+      appBar:
+          AppBar(title: Text(session.name.isNotEmpty ? session.name : 'Session')),
       body: Padding(
         padding: const EdgeInsets.all(24),
         child: Column(
@@ -38,7 +46,8 @@ class SessionDetailScreen extends ConsumerWidget {
 
             // Directory
             if (session.directory.isNotEmpty) ...[
-              _infoRow(theme, Icons.folder_outlined, 'Directory', session.directory),
+              _infoRow(
+                  theme, Icons.folder_outlined, 'Directory', session.directory),
               const SizedBox(height: 12),
             ],
 
@@ -77,7 +86,8 @@ class SessionDetailScreen extends ConsumerWidget {
                 ),
                 child: Text(
                   session.error!,
-                  style: TextStyle(color: theme.colorScheme.onErrorContainer),
+                  style:
+                      TextStyle(color: theme.colorScheme.onErrorContainer),
                 ),
               ),
               const SizedBox(height: 20),
@@ -85,10 +95,8 @@ class SessionDetailScreen extends ConsumerWidget {
 
             const Spacer(),
 
-            // Open in Claude button
-            if (session.url != null &&
-                (session.status == SessionStatus.ready ||
-                    session.status == SessionStatus.active)) ...[
+            // Open in Claude button — always enabled if URL exists (local action)
+            if (session.url != null) ...[
               FilledButton.icon(
                 onPressed: () => _openInClaude(context, session.url!),
                 icon: const Icon(Icons.open_in_new),
@@ -101,14 +109,18 @@ class SessionDetailScreen extends ConsumerWidget {
               const SizedBox(height: 12),
             ],
 
-            // Stop button
+            // Stop button — disabled when relay disconnected or daemon offline
             if (session.status == SessionStatus.starting ||
                 session.status == SessionStatus.ready ||
                 session.status == SessionStatus.active)
               OutlinedButton.icon(
-                onPressed: () => _confirmStop(context, ref, session.id),
+                onPressed: canSendCommands
+                    ? () => _confirmStop(context, ref, session.id)
+                    : null,
                 icon: const Icon(Icons.stop),
-                label: const Text('Stop Session'),
+                label: Text(canSendCommands
+                    ? 'Stop Session'
+                    : 'Stop Session (offline)'),
                 style: OutlinedButton.styleFrom(
                   foregroundColor: theme.colorScheme.error,
                   padding: const EdgeInsets.symmetric(vertical: 16),
@@ -120,7 +132,8 @@ class SessionDetailScreen extends ConsumerWidget {
     );
   }
 
-  Widget _infoRow(ThemeData theme, IconData icon, String label, String value) {
+  Widget _infoRow(
+      ThemeData theme, IconData icon, String label, String value) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -142,8 +155,10 @@ class SessionDetailScreen extends ConsumerWidget {
   }
 
   Future<void> _openInClaude(BuildContext context, String url) async {
+    HapticFeedback.lightImpact();
     final uri = Uri.parse(url);
-    final opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    final opened =
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
     if (!opened && context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Could not open URL')),
@@ -152,6 +167,7 @@ class SessionDetailScreen extends ConsumerWidget {
   }
 
   void _confirmStop(BuildContext context, WidgetRef ref, String sessionId) {
+    HapticFeedback.lightImpact();
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -166,6 +182,10 @@ class SessionDetailScreen extends ConsumerWidget {
             onPressed: () {
               ref.read(sessionsProvider.notifier).stopSession(sessionId);
               Navigator.of(ctx).pop();
+              HapticFeedback.mediumImpact();
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Session stopped')),
+              );
             },
             child: const Text('Stop'),
           ),

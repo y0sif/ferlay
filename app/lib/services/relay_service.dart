@@ -176,6 +176,15 @@ class RelayService {
     send(ControlMessage.relay(payload));
   }
 
+  /// Force-reconnect the WebSocket (e.g. from a Retry button or app foreground).
+  void reconnect() {
+    _reconnectTimer?.cancel();
+    _channel?.sink.close();
+    _channel = null;
+    _backoff = 1;
+    _doConnect();
+  }
+
   void _scheduleReconnect() {
     _channel = null;
     _setState(RelayConnectionState.disconnected);

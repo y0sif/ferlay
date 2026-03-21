@@ -138,11 +138,18 @@ pub fn handle_message(
                             target = %target_id,
                             "Target offline, buffering message"
                         );
-                        buffer_message(state, &target_id, payload_str);
-                        send_to(tx, &ControlMessage::Error {
-                            code: "peer_offline".to_string(),
-                            message: "Paired device is offline. Message buffered.".to_string(),
-                        });
+                        let buffer_was_full = buffer_message(state, &target_id, payload_str);
+                        if buffer_was_full {
+                            send_to(tx, &ControlMessage::Error {
+                                code: "buffer_full".to_string(),
+                                message: "Message buffer full. Some older messages may be lost.".to_string(),
+                            });
+                        } else {
+                            send_to(tx, &ControlMessage::Error {
+                                code: "peer_offline".to_string(),
+                                message: "Paired device is offline. Message buffered.".to_string(),
+                            });
+                        }
                     }
                 }
                 None => {

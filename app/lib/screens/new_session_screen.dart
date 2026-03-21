@@ -1,8 +1,14 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../models/session.dart';
+import '../providers/connection_provider.dart';
+import '../providers/relay_provider.dart';
 import '../providers/sessions_provider.dart';
+import '../services/relay_service.dart';
 
 class NewSessionScreen extends ConsumerStatefulWidget {
   const NewSessionScreen({super.key});
@@ -15,11 +21,13 @@ class _NewSessionScreenState extends ConsumerState<NewSessionScreen> {
   final _directoryController = TextEditingController(text: '~/Projects/');
   final _nameController = TextEditingController();
   bool _loading = false;
+  StreamSubscription<RelayConnectionState>? _disconnectSub;
 
   @override
   void dispose() {
     _directoryController.dispose();
     _nameController.dispose();
+    _disconnectSub?.cancel();
     super.dispose();
   }
 
@@ -29,19 +37,51 @@ class _NewSessionScreenState extends ConsumerState<NewSessionScreen> {
 
     if (directory.isEmpty) return;
 
+    final connState = ref.read(connectionProvider);
+    if (!connState.canStartSession) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+            content:
+                Text(connState.disabledReason ?? 'Cannot start session')),
+      );
+      return;
+    }
+
     setState(() => _loading = true);
+    HapticFeedback.lightImpact();
 
     ref.read(sessionsProvider.notifier).startSession(
           directory: directory,
           name: name.isNotEmpty ? name : 'session',
         );
 
-    // Timeout after 30s
-    Future.delayed(const Duration(seconds: 30), () {
+    // Watch for disconnection while waiting
+    _disconnectSub?.cancel();
+    _disconnectSub =
+        ref.read(relayServiceProvider).stateStream.listen((relayState) {
+      if (relayState == RelayConnectionState.disconnected && _loading) {
+        setState(() => _loading = false);
+        _disconnectSub?.cancel();
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+                content: Text('Connection lost while starting session')),
+          );
+        }
+      }
+    });
+
+    // Timeout after 20s
+    Future.delayed(const Duration(seconds: 20), () {
       if (mounted && _loading) {
         setState(() => _loading = false);
+        _disconnectSub?.cancel();
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Session start timed out')),
+          const SnackBar(
+            content: Text(
+                'Session start timed out. Check: daemon running, directory exists, Claude installed.'),
+            duration: Duration(seconds: 5),
+          ),
         );
       }
     });
@@ -49,6 +89,8 @@ class _NewSessionScreenState extends ConsumerState<NewSessionScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final connState = ref.watch(connectionProvider);
+
     // Watch for new ready sessions and navigate
     ref.listen(sessionsProvider, (prev, next) {
       if (!_loading) return;
@@ -57,12 +99,15 @@ class _NewSessionScreenState extends ConsumerState<NewSessionScreen> {
           (s) => s.status == SessionStatus.ready && !prevIds.contains(s.id));
       if (newReady.isNotEmpty) {
         setState(() => _loading = false);
+        _disconnectSub?.cancel();
         Navigator.of(context).pushReplacementNamed(
           '/sessions/detail',
           arguments: newReady.first,
         );
       }
     });
+
+    final canStart = connState.canStartSession && !_loading;
 
     return Scaffold(
       appBar: AppBar(title: const Text('New Session')),
@@ -86,13 +131,14 @@ class _NewSessionScreenState extends ConsumerState<NewSessionScreen> {
               decoration: const InputDecoration(
                 labelText: 'Session Name (optional)',
                 hintText: 'refactor',
+                helperText: 'Defaults to "session" if empty',
                 prefixIcon: Icon(Icons.label),
                 border: OutlineInputBorder(),
               ),
             ),
             const SizedBox(height: 24),
             FilledButton.icon(
-              onPressed: _loading ? null : _startSession,
+              onPressed: canStart ? _startSession : null,
               icon: _loading
                   ? const SizedBox(
                       height: 20,
@@ -100,8 +146,22 @@ class _NewSessionScreenState extends ConsumerState<NewSessionScreen> {
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
                   : const Icon(Icons.play_arrow),
-              label: Text(_loading ? 'Starting...' : 'Start Session'),
+              label: Text(_loading
+                  ? 'Starting...'
+                  : connState.canStartSession
+                      ? 'Start Session'
+                      : connState.disabledReason ?? 'Cannot start'),
             ),
+            if (!connState.canStartSession && !_loading) ...[
+              const SizedBox(height: 8),
+              Text(
+                connState.disabledReason ?? 'Cannot start session',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Theme.of(context).colorScheme.error,
+                    ),
+                textAlign: TextAlign.center,
+              ),
+            ],
           ],
         ),
       ),
