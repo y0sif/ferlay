@@ -32,6 +32,7 @@ class RelayService {
   Timer? _reconnectTimer;
   bool _disposed = false;
   bool _wasConnected = false;
+  bool _intentionalClose = false;
 
   CryptoService? _crypto;
   EncryptionState _encryptionState = EncryptionState.notEstablished;
@@ -91,11 +92,10 @@ class RelayService {
 
   Future<void> connect(String relayUrl) async {
     // Close existing connection first to avoid zombie WebSockets.
-    // Without this, calling connect() twice (e.g. _checkPairing + startPairing)
-    // creates two WebSocket connections — the relay only routes to the latest one
-    // but the old listener is stale, causing messages to be lost.
+    // Mark as intentional so onDone doesn't trigger auto-reconnect.
     _reconnectTimer?.cancel();
     if (_channel != null) {
+      _intentionalClose = true;
       _channel!.sink.close();
       _channel = null;
     }
@@ -109,6 +109,7 @@ class RelayService {
   void _doConnect() {
     if (_disposed || _relayUrl == null) return;
 
+    _intentionalClose = false;
     _setState(RelayConnectionState.connecting);
 
     try {
@@ -152,34 +153,36 @@ class RelayService {
       final decoded = jsonDecode(raw);
 
       if (decoded is Map<String, dynamic>) {
+        final type = decoded['type'];
+
         // Check if this is a relay message with an encrypted payload
-        if (decoded['type'] == 'relay' && decoded['payload'] is String) {
+        if (type == 'relay' && decoded['payload'] is String) {
           final encrypted = decoded['payload'] as String;
           if (_crypto != null && _crypto!.isReady) {
             _decryptAndEmit(encrypted);
           } else {
-            // Buffer encrypted messages that arrive before crypto is ready
-            // (e.g. verification challenge arriving while key derivation is in progress)
             _pendingEncrypted.add(encrypted);
           }
           return;
         }
         // Relay messages with unencrypted JSON payload (e.g. KeyExchange before crypto)
-        if (decoded['type'] == 'relay' && decoded['payload'] is Map<String, dynamic>) {
+        if (type == 'relay' && decoded['payload'] is Map<String, dynamic>) {
           _incomingController.add(decoded['payload'] as Map<String, dynamic>);
           return;
         }
         // Control messages (register, paired, error, etc.) are not encrypted
         _incomingController.add(decoded);
       } else if (decoded is String) {
-        // Raw encrypted payload (base64 blob without relay wrapper)
+        // Raw encrypted payload (base64 blob sent by relay as forwarded payload)
         if (_crypto != null && _crypto!.isReady) {
           _decryptAndEmit(decoded);
         } else {
           _pendingEncrypted.add(decoded);
         }
       }
-    } catch (_) {}
+    } catch (e) {
+      _emitError('Failed to handle message: $e');
+    }
   }
 
   Future<void> _decryptAndEmit(String encrypted) async {
@@ -240,9 +243,11 @@ class RelayService {
 
   void _scheduleReconnect() {
     _channel = null;
+    // Don't auto-reconnect if we intentionally closed (e.g. connect() replacing the connection)
+    if (_intentionalClose || _disposed) return;
+
     _setState(RelayConnectionState.disconnected);
     _reconnectAttempts++;
-    if (_disposed) return;
 
     _reconnectTimer?.cancel();
     _reconnectTimer = Timer(Duration(seconds: _backoff), () {

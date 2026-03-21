@@ -139,17 +139,25 @@ class _NewSessionScreenState extends ConsumerState<NewSessionScreen> {
   Widget build(BuildContext context) {
     final connState = ref.watch(connectionProvider);
 
-    // Watch for new sessions (ready → navigate, crashed → show error)
+    // Watch for session status changes (ready → navigate, crashed → show error).
+    // Compare by status, not just by ID — the daemon sends "starting" first,
+    // then "ready", so the session ID already exists when it becomes ready.
     ref.listen(sessionsProvider, (prev, next) {
       if (!_loading) return;
-      final prevIds = prev?.map((s) => s.id).toSet() ?? {};
-      final newSessions =
-          next.where((s) => !prevIds.contains(s.id)).toList();
+      final prevReady = prev
+              ?.where((s) => s.status == SessionStatus.ready)
+              .map((s) => s.id)
+              .toSet() ??
+          {};
+      final prevCrashed = prev
+              ?.where((s) => s.status == SessionStatus.crashed)
+              .map((s) => s.id)
+              .toSet() ??
+          {};
 
-      // Check for crashed sessions first (e.g. invalid directory error)
-      final newCrashed = newSessions
-          .where((s) => s.status == SessionStatus.crashed)
-          .toList();
+      // Check for sessions that just became crashed (e.g. invalid directory)
+      final newCrashed = next.where(
+          (s) => s.status == SessionStatus.crashed && !prevCrashed.contains(s.id));
       if (newCrashed.isNotEmpty) {
         _cancelLoading();
         final errorMsg =
@@ -164,10 +172,9 @@ class _NewSessionScreenState extends ConsumerState<NewSessionScreen> {
         return;
       }
 
-      // Check for ready sessions → navigate to detail
-      final newReady = newSessions
-          .where((s) => s.status == SessionStatus.ready)
-          .toList();
+      // Check for sessions that just became ready → navigate to detail
+      final newReady = next.where(
+          (s) => s.status == SessionStatus.ready && !prevReady.contains(s.id));
       if (newReady.isNotEmpty) {
         _cancelLoading();
         Navigator.of(context).pushReplacementNamed(
