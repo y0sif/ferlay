@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::path::Path;
 use std::process::Stdio;
 use std::sync::Arc;
 use tokio::process::{Child, Command};
@@ -63,6 +64,39 @@ impl SessionManager {
 
         // Expand ~ in directory path
         let expanded_dir = shellexpand_tilde(&directory);
+
+        // Validate directory exists
+        if !Path::new(&expanded_dir).is_dir() {
+            let error = format!(
+                "Directory '{}' does not exist or is not a directory",
+                directory
+            );
+            tracing::error!(session_id = %session_id, error = %error, "Invalid directory");
+            self.send_status(&session_id, "crashed", Some(error));
+            return;
+        }
+
+        // Check Claude CLI is available
+        match std::process::Command::new("claude").arg("--version").output() {
+            Ok(output) if output.status.success() => {
+                tracing::debug!("Claude CLI found");
+            }
+            Ok(output) => {
+                let error = format!(
+                    "Claude CLI check failed (exit code {}). Install it: https://docs.anthropic.com/en/docs/claude-code",
+                    output.status.code().unwrap_or(-1)
+                );
+                tracing::error!(session_id = %session_id, error = %error, "Claude CLI check failed");
+                self.send_status(&session_id, "crashed", Some(error));
+                return;
+            }
+            Err(_) => {
+                let error = "Claude CLI not found. Install it: https://docs.anthropic.com/en/docs/claude-code".to_string();
+                tracing::error!(session_id = %session_id, error = %error, "Claude CLI not found");
+                self.send_status(&session_id, "crashed", Some(error));
+                return;
+            }
+        }
 
         let child_result = Command::new("claude")
             .args(["remote-control", "--name", &name, "--verbose", "--spawn=same-dir"])
