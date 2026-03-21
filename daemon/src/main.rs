@@ -9,8 +9,11 @@ mod session;
 
 use clap::{Parser, Subcommand};
 
+/// Default hosted relay URL. Override with --relay or `ferlay config set relay-url <url>`.
+pub const DEFAULT_RELAY_URL: &str = "wss://relay.ferlay.dev/ws";
+
 #[derive(Parser)]
-#[command(name = "ferlay", about = "Remote session manager for Claude Code")]
+#[command(name = "ferlay", version, about = "Remote session manager for Claude Code")]
 struct Cli {
     #[command(subcommand)]
     command: Commands,
@@ -27,6 +30,10 @@ enum Commands {
         /// Force new pairing even if a saved encryption key exists
         #[arg(long)]
         re_pair: bool,
+
+        /// Run in local mode (relay defaults to ws://127.0.0.1:8080/ws)
+        #[arg(long)]
+        local: bool,
     },
 
     /// Show daemon status + active sessions
@@ -51,13 +58,15 @@ enum ConfigAction {
         #[command(subcommand)]
         setting: ConfigGetSetting,
     },
+    /// Show all configuration and pairing status
+    Show,
     /// Reset config to defaults
     Reset,
 }
 
 #[derive(Subcommand)]
 enum ConfigSetting {
-    /// Set the relay server URL
+    /// Set the relay server URL (use "default" to reset to hosted relay)
     RelayUrl { url: String },
 }
 
@@ -78,10 +87,19 @@ async fn main() {
 
     let cli = Cli::parse();
     let cfg = config::load();
-    let relay_url = cli.relay.unwrap_or_else(|| cfg.relay_url.clone());
 
     match cli.command {
-        Commands::Daemon { re_pair } => {
+        Commands::Daemon { re_pair, local } => {
+            let relay_url = if local {
+                let local_url = "ws://127.0.0.1:8080/ws".to_string();
+                let url = cli.relay.unwrap_or(local_url);
+                tracing::info!("Running in local mode (relay: {})", url);
+                url
+            } else {
+                let url = cli.relay.unwrap_or_else(|| cfg.relay_url.clone());
+                tracing::info!("Using relay: {url}");
+                url
+            };
             tracing::info!(relay = %relay_url, device_id = %cfg.device_id, re_pair = re_pair, "Starting daemon");
             daemon::run(cfg, relay_url, re_pair).await;
         }
@@ -95,8 +113,13 @@ async fn main() {
         Commands::Config { action } => match action {
             ConfigAction::Set { setting } => match setting {
                 ConfigSetting::RelayUrl { url } => {
-                    config::set_relay_url(&url);
-                    println!("Relay URL set to: {url}");
+                    let actual_url = if url == "default" {
+                        DEFAULT_RELAY_URL.to_string()
+                    } else {
+                        url
+                    };
+                    config::set_relay_url(&actual_url);
+                    println!("Relay URL set to: {actual_url}");
                 }
             },
             ConfigAction::Get { setting } => match setting {
@@ -104,6 +127,16 @@ async fn main() {
                     println!("{}", config::get_relay_url());
                 }
             },
+            ConfigAction::Show => {
+                let c = config::load();
+                println!("relay_url: {}", c.relay_url);
+                println!("device_id: {}", c.device_id);
+                let keys_exist = dirs::config_dir()
+                    .map(|d| d.join("ferlay/keys").exists())
+                    .unwrap_or(false);
+                println!("paired: {}", keys_exist);
+                println!("version: {}", env!("CARGO_PKG_VERSION"));
+            }
             ConfigAction::Reset => {
                 config::reset();
                 println!("Config reset to defaults");

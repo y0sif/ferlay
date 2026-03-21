@@ -1,0 +1,29 @@
+services:
+  relay:
+    build:
+      context: .
+      dockerfile: relay/Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      - RUST_LOG=furlay_relay=debug
+      - PORT=8080
+
+  daemon:
+    build:
+      context: .
+      dockerfile: daemon/Dockerfile
+    ports:
+      - "9876:9876"
+    environment:
+      - RUST_LOG=furlay_daemon=debug
+    depends_on:
+      - relay
+    command: ["furlay-daemon", "daemon", "--relay", "ws://relay:8080/ws"]
+    volumes:
+      - daemon-config:/root/.config/ferlay
+    tty: true
+    stdin_open: true
+
+volumes:
+  daemon-config:
