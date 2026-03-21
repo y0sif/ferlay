@@ -4,7 +4,7 @@
 
 $ErrorActionPreference = "Stop"
 
-$Repo = "OWNER/ferlay"
+$Repo = "y0sif/ferlay"
 $BinaryName = "ferlay.exe"
 
 Write-Host ""

@@ -4,7 +4,7 @@ set -e
 # Ferlay Daemon Installer
 # Usage: curl -sSL https://get.ferlay.dev | sh
 
-REPO="OWNER/ferlay"
+REPO="y0sif/ferlay"
 BINARY_NAME="ferlay"
 INSTALL_DIR="${FERLAY_INSTALL_DIR:-$HOME/.local/bin}"
 
