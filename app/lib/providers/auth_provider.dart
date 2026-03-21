@@ -68,9 +68,11 @@ class AuthNotifier extends Notifier<PairingState> {
     // Only include public key in pair_with_code if we have the daemon's key (QR path)
     final includeKeyInPairing = daemonPublicKeyB64 != null;
 
-    // Listen for registration + pairing responses
+    // Single listener handles registration, pairing, AND key exchange.
+    // This avoids broadcast stream race conditions between cancel/re-listen.
     final completer = Completer<bool>();
     var registered = false;
+    String? capturedKeyExchangePk;
 
     final sub = relay.incoming.listen((msg) {
       final type = msg['type'];
@@ -94,41 +96,55 @@ class AuthNotifier extends Notifier<PairingState> {
       } else if (type == 'error') {
         dev.log('Relay error: ${msg['message']}', name: 'Ferlay');
         if (!completer.isCompleted) completer.complete(false);
+      } else if (type == 'key_exchange' && capturedKeyExchangePk == null) {
+        // Capture daemon's KeyExchange (manual pairing path)
+        capturedKeyExchangePk = msg['public_key'] as String?;
+        dev.log('Captured daemon KeyExchange in pairing listener', name: 'Ferlay');
       }
     });
 
     final success = await completer.future.timeout(
-      const Duration(seconds: 15),
+      const Duration(seconds: 20),
       onTimeout: () => false,
     );
 
-    await sub.cancel();
-
     if (!success) {
+      await sub.cancel();
       await StorageService.clearPairing();
       state = PairingState.unpaired;
       return;
     }
 
-    // Derive encryption key
+    // For manual pairing: wait for daemon's KeyExchange if not captured yet.
+    // Keep the same listener running to avoid broadcast race.
+    if (daemonPublicKeyB64 == null && capturedKeyExchangePk == null) {
+      dev.log('Manual pairing — waiting for daemon KeyExchange...', name: 'Ferlay');
+      final deadline = DateTime.now().add(const Duration(seconds: 30));
+      while (capturedKeyExchangePk == null && DateTime.now().isBefore(deadline)) {
+        await Future.delayed(const Duration(milliseconds: 100));
+      }
+    }
+
+    await sub.cancel();
+
+    // Determine peer public key (QR path: from QR data, manual path: from KeyExchange)
     final crypto = CryptoService();
-    String? peerPublicKeyB64 = daemonPublicKeyB64;
+    final peerPublicKeyB64 = daemonPublicKeyB64 ?? capturedKeyExchangePk;
 
     if (peerPublicKeyB64 == null) {
-      // Manual pairing path: wait for daemon's KeyExchange, then send ours
-      dev.log('Manual pairing — waiting for daemon KeyExchange...', name: 'Ferlay');
-      peerPublicKeyB64 = await _waitForKeyExchange(relay);
-      if (peerPublicKeyB64 == null) {
-        dev.log('KeyExchange timed out', name: 'Ferlay');
-        await StorageService.clearPairing();
-        state = PairingState.unpaired;
-        return;
-      }
-      // Send our public key back (unencrypted, via relay)
+      dev.log('KeyExchange timed out — no daemon public key received', name: 'Ferlay');
+      await StorageService.clearPairing();
+      state = PairingState.unpaired;
+      return;
+    }
+
+    // For manual pairing: send our public key back to daemon
+    if (daemonPublicKeyB64 == null) {
       relay.sendRelayUnencrypted(AppMessage.keyExchange(myPublicKeyB64));
       dev.log('Sent our KeyExchange response', name: 'Ferlay');
     }
 
+    // Derive shared AES key via ECDH + HKDF
     final peerPkBytes = base64Decode(peerPublicKeyB64);
     await crypto.deriveKey(
       myKeyPair: myKeyPair,
@@ -137,7 +153,9 @@ class AuthNotifier extends Notifier<PairingState> {
     relay.setCrypto(crypto);
     dev.log('E2E encryption keys derived, waiting for verification...', name: 'Ferlay');
 
-    // Wait for encryption verification challenge from daemon
+    // Wait for encryption verification challenge from daemon.
+    // The challenge may have already arrived and been buffered in RelayService
+    // (setCrypto replays pending encrypted messages).
     final verified = await _waitForEncryptionVerification(relay);
     if (verified) {
       dev.log('E2E encryption verified successfully', name: 'Ferlay');
@@ -149,30 +167,6 @@ class AuthNotifier extends Notifier<PairingState> {
       await crypto.clearKey();
       await StorageService.clearPairing();
       state = PairingState.unpaired;
-    }
-  }
-
-  /// Waits for the daemon to send its public key via KeyExchange relay message.
-  /// Returns the base64 public key string, or null on timeout.
-  Future<String?> _waitForKeyExchange(dynamic relay) async {
-    final completer = Completer<String?>();
-
-    final sub = relay.incoming.listen((Map<String, dynamic> msg) {
-      if (msg['type'] == 'key_exchange') {
-        final pk = msg['public_key'] as String?;
-        if (pk != null && !completer.isCompleted) {
-          completer.complete(pk);
-        }
-      }
-    });
-
-    try {
-      return await completer.future.timeout(
-        const Duration(seconds: 30),
-        onTimeout: () => null,
-      );
-    } finally {
-      await sub.cancel();
     }
   }
 

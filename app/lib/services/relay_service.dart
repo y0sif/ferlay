@@ -35,6 +35,10 @@ class RelayService {
   CryptoService? _crypto;
   EncryptionState _encryptionState = EncryptionState.notEstablished;
 
+  /// Buffer for encrypted messages that arrive before crypto is ready.
+  /// These are replayed once setCrypto() is called.
+  final List<String> _pendingEncrypted = [];
+
   final _incomingController = StreamController<Map<String, dynamic>>.broadcast();
   final _stateController = StreamController<RelayConnectionState>.broadcast();
   final _errorController = StreamController<String>.broadcast();
@@ -52,9 +56,19 @@ class RelayService {
   int get reconnectAttempts => _reconnectAttempts;
 
   /// Sets the crypto service for encrypting/decrypting relay payloads.
+  /// Also replays any encrypted messages that arrived before crypto was ready.
   void setCrypto(CryptoService crypto) {
     _crypto = crypto;
     _setEncryptionState(EncryptionState.establishing);
+
+    // Replay any encrypted messages that were buffered before crypto was ready
+    if (_pendingEncrypted.isNotEmpty) {
+      final buffered = List<String>.from(_pendingEncrypted);
+      _pendingEncrypted.clear();
+      for (final encrypted in buffered) {
+        _decryptAndEmit(encrypted);
+      }
+    }
   }
 
   /// Marks encryption as verified and working.
@@ -125,20 +139,30 @@ class RelayService {
       if (decoded is Map<String, dynamic>) {
         // Check if this is a relay message with an encrypted payload
         if (decoded['type'] == 'relay' && decoded['payload'] is String) {
+          final encrypted = decoded['payload'] as String;
           if (_crypto != null && _crypto!.isReady) {
-            _decryptAndEmit(decoded['payload'] as String);
+            _decryptAndEmit(encrypted);
           } else {
-            _emitError('Received encrypted message but no encryption key established');
+            // Buffer encrypted messages that arrive before crypto is ready
+            // (e.g. verification challenge arriving while key derivation is in progress)
+            _pendingEncrypted.add(encrypted);
           }
+          return;
+        }
+        // Relay messages with unencrypted JSON payload (e.g. KeyExchange before crypto)
+        if (decoded['type'] == 'relay' && decoded['payload'] is Map<String, dynamic>) {
+          _incomingController.add(decoded['payload'] as Map<String, dynamic>);
           return;
         }
         // Control messages (register, paired, error, etc.) are not encrypted
         _incomingController.add(decoded);
-      } else if (decoded is String && _crypto != null && _crypto!.isReady) {
-        // Encrypted relay payload (JSON string containing base64 blob)
-        _decryptAndEmit(decoded);
       } else if (decoded is String) {
-        _emitError('Received encrypted message but no encryption key established');
+        // Raw encrypted payload (base64 blob without relay wrapper)
+        if (_crypto != null && _crypto!.isReady) {
+          _decryptAndEmit(decoded);
+        } else {
+          _pendingEncrypted.add(decoded);
+        }
       }
     } catch (_) {}
   }

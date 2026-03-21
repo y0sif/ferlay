@@ -286,7 +286,7 @@ class _PairingScreenState extends ConsumerState<PairingScreen> {
             ),
             const SizedBox(height: 8),
             Text(
-              'Manual pairing does not support E2E encryption.\nUse QR scanning for encrypted sessions.',
+              'E2E encryption is established via key exchange after pairing.\nQR scanning is faster but both methods are secure.',
               style: theme.textTheme.bodySmall
                   ?.copyWith(color: theme.colorScheme.outline),
               textAlign: TextAlign.center,
