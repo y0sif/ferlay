@@ -27,8 +27,10 @@ class RelayService {
   String? _relayUrl;
   String? _deviceId;
   int _backoff = 1;
+  int _reconnectAttempts = 0;
   Timer? _reconnectTimer;
   bool _disposed = false;
+  bool _wasConnected = false;
 
   CryptoService? _crypto;
   EncryptionState _encryptionState = EncryptionState.notEstablished;
@@ -37,13 +39,17 @@ class RelayService {
   final _stateController = StreamController<RelayConnectionState>.broadcast();
   final _errorController = StreamController<String>.broadcast();
   final _encryptionStateController = StreamController<EncryptionState>.broadcast();
+  /// Emits events when reconnection occurs (true = reconnected, false = lost).
+  final _reconnectionController = StreamController<bool>.broadcast();
 
   Stream<Map<String, dynamic>> get incoming => _incomingController.stream;
   Stream<RelayConnectionState> get stateStream => _stateController.stream;
   Stream<String> get errors => _errorController.stream;
   Stream<EncryptionState> get encryptionStateStream => _encryptionStateController.stream;
+  Stream<bool> get reconnectionStream => _reconnectionController.stream;
   RelayConnectionState get state => _state;
   EncryptionState get encryptionState => _encryptionState;
+  int get reconnectAttempts => _reconnectAttempts;
 
   /// Sets the crypto service for encrypting/decrypting relay payloads.
   void setCrypto(CryptoService crypto) {
@@ -86,7 +92,13 @@ class RelayService {
         (data) {
           _backoff = 1;
           if (_state != RelayConnectionState.connected) {
+            final wasReconnect = _wasConnected;
             _setState(RelayConnectionState.connected);
+            _reconnectAttempts = 0;
+            if (wasReconnect && !_reconnectionController.isClosed) {
+              _reconnectionController.add(true); // reconnected
+            }
+            _wasConnected = true;
           }
           _handleMessage(data.toString());
         },
@@ -188,6 +200,7 @@ class RelayService {
   void _scheduleReconnect() {
     _channel = null;
     _setState(RelayConnectionState.disconnected);
+    _reconnectAttempts++;
     if (_disposed) return;
 
     _reconnectTimer?.cancel();
@@ -212,5 +225,6 @@ class RelayService {
     _stateController.close();
     _errorController.close();
     _encryptionStateController.close();
+    _reconnectionController.close();
   }
 }

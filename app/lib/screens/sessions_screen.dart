@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -16,14 +18,62 @@ class SessionsScreen extends ConsumerStatefulWidget {
   ConsumerState<SessionsScreen> createState() => _SessionsScreenState();
 }
 
-class _SessionsScreenState extends ConsumerState<SessionsScreen> {
+class _SessionsScreenState extends ConsumerState<SessionsScreen>
+    with WidgetsBindingObserver {
+  bool _showReconnectedBanner = false;
+  Timer? _reconnectedBannerTimer;
+  StreamSubscription<bool>? _reconnectionSub;
+
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
+
     // Request sessions list on load
     Future.microtask(() {
       ref.read(sessionsProvider.notifier).refreshSessions();
+
+      // Listen for reconnection events
+      final relay = ref.read(relayServiceProvider);
+      _reconnectionSub = relay.reconnectionStream.listen((reconnected) {
+        if (reconnected && mounted) {
+          // Flash green banner for 3 seconds
+          setState(() => _showReconnectedBanner = true);
+          _reconnectedBannerTimer?.cancel();
+          _reconnectedBannerTimer = Timer(const Duration(seconds: 3), () {
+            if (mounted) {
+              setState(() => _showReconnectedBanner = false);
+            }
+          });
+          // Auto-refresh sessions on reconnect
+          ref.read(sessionsProvider.notifier).refreshSessions();
+          // Send immediate heartbeat
+          ref.read(connectionProvider.notifier).sendImmediatePing();
+        }
+      });
     });
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _reconnectedBannerTimer?.cancel();
+    _reconnectionSub?.cancel();
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      // App returning from background — force reconnect if needed
+      final relay = ref.read(relayServiceProvider);
+      if (relay.state != RelayConnectionState.connected) {
+        relay.reconnect();
+      } else {
+        // Already connected — send heartbeat to check daemon
+        ref.read(connectionProvider.notifier).sendImmediatePing();
+      }
+    }
   }
 
   @override
@@ -57,6 +107,15 @@ class _SessionsScreenState extends ConsumerState<SessionsScreen> {
       ),
       body: Column(
         children: [
+          // Reconnected banner (flashes green for 3s)
+          if (_showReconnectedBanner)
+            _ConnectionBanner(
+              message: 'Connected',
+              color: Colors.green.shade100,
+              textColor: Colors.green.shade900,
+              icon: Icons.cloud_done,
+            ),
+
           // Connection status banners
           _buildConnectionBanners(connState, theme),
 
@@ -98,7 +157,7 @@ class _SessionsScreenState extends ConsumerState<SessionsScreen> {
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(
                               content:
-                                  Text('Cannot refresh — not connected'),
+                                  Text('Cannot refresh -- not connected'),
                               duration: Duration(seconds: 2),
                             ),
                           );
@@ -106,9 +165,8 @@ class _SessionsScreenState extends ConsumerState<SessionsScreen> {
                         return;
                       }
                       ref.read(sessionsProvider.notifier).refreshSessions();
-                      // Cap the spinner at 5 seconds
-                      await Future.delayed(
-                          const Duration(seconds: 2));
+                      // Cap the spinner at 2 seconds
+                      await Future.delayed(const Duration(seconds: 2));
                     },
                     child: ListView.builder(
                       padding: const EdgeInsets.symmetric(vertical: 8),
@@ -154,24 +212,29 @@ class _SessionsScreenState extends ConsumerState<SessionsScreen> {
   Widget _buildConnectionBanners(
       AppConnectionState connState, ThemeData theme) {
     final banners = <Widget>[];
+    final relay = ref.read(relayServiceProvider);
 
     // Relay state
     switch (connState.relay) {
       case RelayConnectionState.disconnected:
+        final attempts = relay.reconnectAttempts;
         banners.add(_ConnectionBanner(
-          message: 'Disconnected from relay',
+          message: attempts > 0
+              ? 'Disconnected from relay. Reconnecting... (attempt $attempts)'
+              : 'Disconnected from relay',
           color: theme.colorScheme.errorContainer,
           textColor: theme.colorScheme.onErrorContainer,
           icon: Icons.cloud_off,
           onRetry: () {
-            // Actually reconnect the WebSocket
-            final relay = ref.read(relayServiceProvider);
             relay.reconnect();
           },
         ));
       case RelayConnectionState.connecting:
+        final attempts = relay.reconnectAttempts;
         banners.add(_ConnectionBanner(
-          message: 'Connecting to relay...',
+          message: attempts > 1
+              ? 'Reconnecting to relay... (attempt $attempts)'
+              : 'Connecting to relay...',
           color: theme.colorScheme.tertiaryContainer,
           textColor: theme.colorScheme.onTertiaryContainer,
           icon: Icons.cloud_sync,
@@ -214,7 +277,7 @@ class _SessionsScreenState extends ConsumerState<SessionsScreen> {
         connState.encryption == EncryptionState.established) {
       if (connState.daemon == DaemonState.offline) {
         banners.add(_ConnectionBanner(
-          message: 'Daemon appears offline',
+          message: 'Daemon appears offline. Sessions may be stale.',
           color: theme.colorScheme.errorContainer,
           textColor: theme.colorScheme.onErrorContainer,
           icon: Icons.computer,
