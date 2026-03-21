@@ -139,12 +139,35 @@ class _NewSessionScreenState extends ConsumerState<NewSessionScreen> {
   Widget build(BuildContext context) {
     final connState = ref.watch(connectionProvider);
 
-    // Watch for new ready sessions and navigate
+    // Watch for new sessions (ready → navigate, crashed → show error)
     ref.listen(sessionsProvider, (prev, next) {
       if (!_loading) return;
       final prevIds = prev?.map((s) => s.id).toSet() ?? {};
-      final newReady = next.where(
-          (s) => s.status == SessionStatus.ready && !prevIds.contains(s.id));
+      final newSessions =
+          next.where((s) => !prevIds.contains(s.id)).toList();
+
+      // Check for crashed sessions first (e.g. invalid directory error)
+      final newCrashed = newSessions
+          .where((s) => s.status == SessionStatus.crashed)
+          .toList();
+      if (newCrashed.isNotEmpty) {
+        _cancelLoading();
+        final errorMsg =
+            newCrashed.first.error ?? 'Session failed to start';
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(errorMsg),
+            duration: const Duration(seconds: 5),
+            backgroundColor: Theme.of(context).colorScheme.error,
+          ),
+        );
+        return;
+      }
+
+      // Check for ready sessions → navigate to detail
+      final newReady = newSessions
+          .where((s) => s.status == SessionStatus.ready)
+          .toList();
       if (newReady.isNotEmpty) {
         _cancelLoading();
         Navigator.of(context).pushReplacementNamed(

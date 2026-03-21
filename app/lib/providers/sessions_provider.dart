@@ -1,9 +1,11 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../models/relay_message.dart';
 import '../models/session.dart';
+import '../services/storage_service.dart';
 import 'relay_provider.dart';
 
 class SessionsNotifier extends Notifier<List<Session>> {
@@ -15,7 +17,32 @@ class SessionsNotifier extends Notifier<List<Session>> {
     _sub?.cancel();
     _sub = relay.incoming.listen(_handleMessage);
     ref.onDispose(() => _sub?.cancel());
+    _loadCachedSessions();
     return [];
+  }
+
+  Future<void> _loadCachedSessions() async {
+    final cached = await StorageService.getSessions();
+    if (cached != null && state.isEmpty) {
+      try {
+        final list = (jsonDecode(cached) as List<dynamic>)
+            .map((s) => Session.fromJson(s as Map<String, dynamic>))
+            .toList();
+        state = list;
+      } catch (_) {}
+    }
+  }
+
+  void _persistSessions() {
+    final json = jsonEncode(state.map((s) => {
+      'id': s.id,
+      'name': s.name,
+      'directory': s.directory,
+      'status': s.status.name,
+      if (s.url != null) 'url': s.url,
+      if (s.error != null) 'error': s.error,
+    }).toList());
+    StorageService.setSessions(json);
   }
 
   void _handleMessage(Map<String, dynamic> msg) {
@@ -42,6 +69,7 @@ class SessionsNotifier extends Notifier<List<Session>> {
                 .toList() ??
             [];
         state = list;
+        _persistSessions();
     }
   }
 
@@ -54,15 +82,34 @@ class SessionsNotifier extends Notifier<List<Session>> {
     } else {
       state = [...state, session];
     }
+    _persistSessions();
   }
 
   void _updateStatus(String sessionId, SessionStatus status, String? error) {
-    state = state.map((s) {
-      if (s.id == sessionId) {
-        return s.copyWith(status: status, error: error);
-      }
-      return s;
-    }).toList();
+    final exists = state.any((s) => s.id == sessionId);
+    if (exists) {
+      state = state.map((s) {
+        if (s.id == sessionId) {
+          return s.copyWith(status: status, error: error);
+        }
+        return s;
+      }).toList();
+    } else {
+      // Session was created on daemon side but app hasn't seen it yet
+      // (e.g. daemon rejected the directory immediately).
+      // Create a placeholder entry so the error is visible.
+      state = [
+        ...state,
+        Session(
+          id: sessionId,
+          name: 'Session',
+          directory: '',
+          status: status,
+          error: error,
+        ),
+      ];
+    }
+    _persistSessions();
   }
 
   void startSession({required String directory, required String name}) {
