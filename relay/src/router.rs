@@ -18,6 +18,9 @@ pub fn handle_message(
         } => {
             tracing::info!(device_id = %id, "Device registered");
 
+            // Clear disconnect time on reconnect
+            state.clear_disconnect(id);
+
             state.devices.insert(
                 id.clone(),
                 DeviceConnection {

@@ -9,6 +9,8 @@ pub struct AppState {
     pub pairing_codes: DashMap<String, PairingEntry>,
     /// device_id → Vec<BufferedMessage> (for offline delivery)
     pub message_buffer: DashMap<String, Vec<BufferedMessage>>,
+    /// device_id → last disconnect time (for stale pairing cleanup)
+    pub disconnect_times: DashMap<String, Instant>,
 }
 
 impl AppState {
@@ -17,7 +19,18 @@ impl AppState {
             devices: DashMap::new(),
             pairing_codes: DashMap::new(),
             message_buffer: DashMap::new(),
+            disconnect_times: DashMap::new(),
         }
+    }
+
+    /// Records when a device disconnects (for stale pairing TTL).
+    pub fn record_disconnect(&self, device_id: &str) {
+        self.disconnect_times.insert(device_id.to_string(), Instant::now());
+    }
+
+    /// Clears disconnect time when a device reconnects.
+    pub fn clear_disconnect(&self, device_id: &str) {
+        self.disconnect_times.remove(device_id);
     }
 }
 

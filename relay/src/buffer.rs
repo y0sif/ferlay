@@ -140,7 +140,11 @@ mod tests {
     }
 }
 
-/// Background task that cleans up expired pairing codes and buffered messages.
+/// Duration after which pairings are cleaned up if BOTH devices are offline.
+const PAIRING_STALE_TTL: Duration = Duration::from_secs(24 * 3600); // 24 hours
+
+/// Background task that cleans up expired pairing codes, buffered messages,
+/// and stale pairings where both devices have been offline for 24 hours.
 pub async fn cleanup_task(state: Arc<AppState>) {
     let mut interval = tokio::time::interval(CLEANUP_INTERVAL);
     loop {
@@ -157,5 +161,50 @@ pub async fn cleanup_task(state: Arc<AppState>) {
                 .retain(|m| now.duration_since(m.timestamp) < BUFFER_TTL);
         }
         state.message_buffer.retain(|_, msgs| !msgs.is_empty());
+
+        // Clean up stale pairings: if both devices in a pair have been
+        // disconnected for more than 24 hours, remove the pairing data.
+        let stale_devices: Vec<String> = state
+            .disconnect_times
+            .iter()
+            .filter(|entry| now.duration_since(*entry.value()) > PAIRING_STALE_TTL)
+            .map(|entry| entry.key().clone())
+            .collect();
+
+        for device_id in &stale_devices {
+            // Check if this device has a paired partner
+            let partner_id = state
+                .devices
+                .get(device_id)
+                .and_then(|d| d.paired_with.clone());
+
+            if let Some(partner_id) = partner_id {
+                // Only remove if partner is also stale (disconnected > 24h)
+                let partner_stale = state
+                    .disconnect_times
+                    .get(&partner_id)
+                    .map(|t| now.duration_since(*t.value()) > PAIRING_STALE_TTL)
+                    .unwrap_or(false);
+
+                if partner_stale {
+                    tracing::info!(
+                        device_a = %device_id,
+                        device_b = %partner_id,
+                        "Removing stale pairing (both offline >24h)"
+                    );
+                    state.devices.remove(device_id);
+                    state.devices.remove(&partner_id);
+                    state.disconnect_times.remove(device_id);
+                    state.disconnect_times.remove(&partner_id);
+                    state.message_buffer.remove(device_id);
+                    state.message_buffer.remove(&partner_id);
+                }
+            } else {
+                // Unpaired device that's been disconnected >24h — clean up
+                state.devices.remove(device_id);
+                state.disconnect_times.remove(device_id);
+                state.message_buffer.remove(device_id);
+            }
+        }
     }
 }
