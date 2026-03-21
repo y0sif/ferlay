@@ -11,6 +11,8 @@ pub struct AppState {
     pub message_buffer: DashMap<String, Vec<BufferedMessage>>,
     /// device_id → last disconnect time (for stale pairing cleanup)
     pub disconnect_times: DashMap<String, Instant>,
+    /// When the server was started
+    pub start_time: Instant,
 }
 
 impl AppState {
@@ -20,6 +22,7 @@ impl AppState {
             pairing_codes: DashMap::new(),
             message_buffer: DashMap::new(),
             disconnect_times: DashMap::new(),
+            start_time: Instant::now(),
         }
     }
 

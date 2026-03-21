@@ -1,8 +1,20 @@
-use axum::{routing::get, Router};
+use axum::{extract::State, routing::get, Json, Router};
+use serde_json::json;
 use std::sync::Arc;
 use tower_http::cors::CorsLayer;
 
 use furlay_relay::{buffer, state::AppState, ws};
+
+const VERSION: &str = env!("CARGO_PKG_VERSION");
+
+async fn stats_handler(State(state): State<Arc<AppState>>) -> Json<serde_json::Value> {
+    Json(json!({
+        "version": VERSION,
+        "uptime_seconds": state.start_time.elapsed().as_secs(),
+        "connected_devices": state.devices.len(),
+        "active_pairings": state.pairing_codes.len(),
+    }))
+}
 
 #[tokio::main]
 async fn main() {
@@ -23,6 +35,7 @@ async fn main() {
     let app = Router::new()
         .route("/ws", get(ws::ws_handler))
         .route("/health", get(|| async { "ok" }))
+        .route("/stats", get(stats_handler))
         .layer(CorsLayer::permissive())
         .with_state(state);
 
