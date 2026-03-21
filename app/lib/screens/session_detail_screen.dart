@@ -29,105 +29,150 @@ class SessionDetailScreen extends ConsumerWidget {
     return Scaffold(
       appBar:
           AppBar(title: Text(session.name.isNotEmpty ? session.name : 'Session')),
-      body: Padding(
+      body: ListView(
         padding: const EdgeInsets.all(24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // Status
-            Row(
-              children: [
-                Text('Status:', style: theme.textTheme.titleMedium),
-                const SizedBox(width: 12),
-                StatusBadge(status: session.status),
-              ],
+        children: [
+          // Status chip
+          Row(
+            children: [
+              StatusBadge(status: session.status),
+              const Spacer(),
+              Text(
+                session.id.length > 8 ? session.id.substring(0, 8) : session.id,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                  fontFamily: 'monospace',
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+
+          // Directory
+          if (session.directory.isNotEmpty) ...[
+            _infoRow(
+                theme, Icons.folder_outlined, 'Directory', session.directory),
+            const SizedBox(height: 16),
+          ],
+
+          // URL section - prominent card
+          if (session.url != null) ...[
+            Card(
+              elevation: 0,
+              color: theme.colorScheme.surfaceContainerHigh,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(Icons.link, size: 18,
+                            color: theme.colorScheme.primary),
+                        const SizedBox(width: 8),
+                        Text('Session URL',
+                            style: theme.textTheme.labelMedium?.copyWith(
+                              color: theme.colorScheme.primary,
+                              fontWeight: FontWeight.w600,
+                            )),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      session.url!,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        fontFamily: 'monospace',
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        onPressed: () {
+                          Clipboard.setData(ClipboardData(text: session.url!));
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('URL copied to clipboard')),
+                          );
+                        },
+                        icon: const Icon(Icons.copy, size: 16),
+                        label: const Text('Copy URL'),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ),
             const SizedBox(height: 20),
-
-            // Directory
-            if (session.directory.isNotEmpty) ...[
-              _infoRow(
-                  theme, Icons.folder_outlined, 'Directory', session.directory),
-              const SizedBox(height: 12),
-            ],
-
-            // Session ID
-            _infoRow(theme, Icons.tag, 'Session ID', session.id),
-            const SizedBox(height: 12),
-
-            // URL
-            if (session.url != null) ...[
-              _infoRow(theme, Icons.link, 'URL', session.url!),
-              const SizedBox(height: 8),
-              Row(
-                children: [
-                  TextButton.icon(
-                    onPressed: () {
-                      Clipboard.setData(ClipboardData(text: session.url!));
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('URL copied')),
-                      );
-                    },
-                    icon: const Icon(Icons.copy, size: 16),
-                    label: const Text('Copy URL'),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-            ],
-
-            // Error
-            if (session.error != null) ...[
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: theme.colorScheme.errorContainer,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(
-                  session.error!,
-                  style:
-                      TextStyle(color: theme.colorScheme.onErrorContainer),
-                ),
-              ),
-              const SizedBox(height: 20),
-            ],
-
-            const Spacer(),
-
-            // Open in Claude button — always enabled if URL exists (local action)
-            if (session.url != null) ...[
-              FilledButton.icon(
-                onPressed: () => _openInClaude(context, session.url!),
-                icon: const Icon(Icons.open_in_new),
-                label: const Text('Open in Claude'),
-                style: FilledButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  textStyle: const TextStyle(fontSize: 16),
-                ),
-              ),
-              const SizedBox(height: 12),
-            ],
-
-            // Stop button — disabled when relay disconnected or daemon offline
-            if (session.status == SessionStatus.starting ||
-                session.status == SessionStatus.ready ||
-                session.status == SessionStatus.active)
-              OutlinedButton.icon(
-                onPressed: canSendCommands
-                    ? () => _confirmStop(context, ref, session.id)
-                    : null,
-                icon: const Icon(Icons.stop),
-                label: Text(canSendCommands
-                    ? 'Stop Session'
-                    : 'Stop Session (offline)'),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: theme.colorScheme.error,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                ),
-              ),
           ],
-        ),
+
+          // Error card
+          if (session.error != null) ...[
+            Card(
+              elevation: 0,
+              color: theme.colorScheme.error,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(Icons.error_outline, size: 20,
+                        color: theme.colorScheme.onError),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        session.error!,
+                        style: TextStyle(color: theme.colorScheme.onError),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 20),
+          ],
+
+          const SizedBox(height: 16),
+
+          // Open in Claude button — full-width filled, prominent
+          if (session.url != null) ...[
+            FilledButton.icon(
+              onPressed: () => _openInClaude(context, session.url!),
+              icon: const Icon(Icons.open_in_new),
+              label: const Text('Open in Claude'),
+              style: FilledButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 18),
+                textStyle: const TextStyle(
+                    fontSize: 16, fontWeight: FontWeight.w600),
+              ),
+            ),
+            const SizedBox(height: 12),
+          ],
+
+          // Stop button — disabled when relay disconnected or daemon offline
+          if (session.status == SessionStatus.starting ||
+              session.status == SessionStatus.ready ||
+              session.status == SessionStatus.active)
+            OutlinedButton.icon(
+              onPressed: canSendCommands
+                  ? () => _confirmStop(context, ref, session.id)
+                  : null,
+              icon: const Icon(Icons.stop),
+              label: Text(canSendCommands
+                  ? 'Stop Session'
+                  : 'Stop Session (offline)'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: theme.colorScheme.error,
+                padding: const EdgeInsets.symmetric(vertical: 16),
+              ),
+            ),
+        ],
       ),
     );
   }
@@ -146,6 +191,7 @@ class SessionDetailScreen extends ConsumerWidget {
               Text(label,
                   style: theme.textTheme.labelSmall
                       ?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+              const SizedBox(height: 2),
               Text(value, style: theme.textTheme.bodyMedium),
             ],
           ),

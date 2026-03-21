@@ -165,7 +165,7 @@ class _PairingScreenState extends ConsumerState<PairingScreen> {
     final theme = Theme.of(context);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Pair with Daemon')),
+      appBar: AppBar(title: const Text('Pair Device')),
       body:
           _showManualInput ? _buildManualInput(theme) : _buildScanner(theme),
     );
@@ -284,14 +284,7 @@ class _PairingScreenState extends ConsumerState<PairingScreen> {
                     )
                   : const Text('Pair'),
             ),
-            const SizedBox(height: 8),
-            Text(
-              'E2E encryption is established via key exchange after pairing.\nQR scanning is faster but both methods are secure.',
-              style: theme.textTheme.bodySmall
-                  ?.copyWith(color: theme.colorScheme.outline),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 16),
             TextButton(
               onPressed: () => setState(() => _showManualInput = false),
               child: const Text('Scan QR code instead'),

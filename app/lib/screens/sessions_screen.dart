@@ -97,7 +97,7 @@ class _SessionsScreenState extends ConsumerState<SessionsScreen>
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Sessions'),
+        title: const Text('Ferlay'),
         actions: [
           IconButton(
             icon: const Icon(Icons.settings),
@@ -123,30 +123,42 @@ class _SessionsScreenState extends ConsumerState<SessionsScreen>
           Expanded(
             child: sessions.isEmpty
                 ? Center(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.terminal,
-                            size: 64,
-                            color: theme.colorScheme.onSurfaceVariant),
-                        const SizedBox(height: 16),
-                        Text(
-                          'No sessions yet',
-                          style: theme.textTheme.titleMedium?.copyWith(
-                            color: theme.colorScheme.onSurfaceVariant,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 32),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(24),
+                            decoration: BoxDecoration(
+                              color: theme.colorScheme.primaryContainer
+                                  .withValues(alpha: 0.3),
+                              shape: BoxShape.circle,
+                            ),
+                            child: Icon(Icons.terminal_rounded,
+                                size: 56,
+                                color: theme.colorScheme.primary),
                           ),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          connState.canStartSession
-                              ? 'Tap + to start a new Claude Code session'
-                              : connState.disabledReason ??
-                                  'Cannot start sessions',
-                          style: theme.textTheme.bodyMedium?.copyWith(
-                            color: theme.colorScheme.onSurfaceVariant,
+                          const SizedBox(height: 24),
+                          Text(
+                            'No sessions yet',
+                            style: theme.textTheme.titleLarge?.copyWith(
+                              fontWeight: FontWeight.w600,
+                            ),
                           ),
-                        ),
-                      ],
+                          const SizedBox(height: 8),
+                          Text(
+                            connState.canStartSession
+                                ? 'Start your first Claude Code session\nby tapping the button below'
+                                : connState.disabledReason ??
+                                    'Cannot start sessions',
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                              color: theme.colorScheme.onSurfaceVariant,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ],
+                      ),
                     ),
                   )
                 : RefreshIndicator(

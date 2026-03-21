@@ -25,7 +25,7 @@ class FerlayApp extends ConsumerWidget {
       title: 'Ferlay',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
-        colorSchemeSeed: const Color(0xFF6750A4),
+        colorSchemeSeed: const Color(0xFF7C4DFF),
         brightness: Brightness.dark,
         useMaterial3: true,
       ),

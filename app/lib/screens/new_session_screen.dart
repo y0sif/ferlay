@@ -205,9 +205,9 @@ class _NewSessionScreenState extends ConsumerState<NewSessionScreen> {
                 controller: _nameController,
                 enabled: !_loading,
                 decoration: const InputDecoration(
-                  labelText: 'Session Name (optional)',
-                  hintText: 'refactor',
-                  helperText: 'Defaults to "session" if empty',
+                  labelText: 'Session Name',
+                  hintText: 'e.g. refactor, bugfix, feature',
+                  helperText: 'Optional \u2014 defaults to "session"',
                   prefixIcon: Icon(Icons.label),
                   border: OutlineInputBorder(),
                 ),

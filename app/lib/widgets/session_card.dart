@@ -15,6 +15,9 @@ class SessionCard extends StatelessWidget {
 
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      elevation: 0,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      color: theme.colorScheme.surfaceContainerHigh,
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(12),
@@ -37,12 +40,12 @@ class SessionCard extends StatelessWidget {
                 ],
               ),
               if (session.directory.isNotEmpty) ...[
-                const SizedBox(height: 6),
+                const SizedBox(height: 8),
                 Row(
                   children: [
                     Icon(Icons.folder_outlined,
-                        size: 14, color: theme.colorScheme.onSurfaceVariant),
-                    const SizedBox(width: 4),
+                        size: 15, color: theme.colorScheme.onSurfaceVariant),
+                    const SizedBox(width: 6),
                     Expanded(
                       child: Text(
                         session.directory,
@@ -56,12 +59,23 @@ class SessionCard extends StatelessWidget {
                 ),
               ],
               if (session.error != null) ...[
-                const SizedBox(height: 6),
-                Text(
-                  session.error!,
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.error,
-                  ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Icon(Icons.error_outline,
+                        size: 15, color: theme.colorScheme.error),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        session.error!,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.error,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ],

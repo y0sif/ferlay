@@ -11,10 +11,10 @@ class StatusBadge extends StatelessWidget {
   Widget build(BuildContext context) {
     final (color, icon) = switch (status) {
       SessionStatus.starting => (Colors.amber, Icons.hourglass_top),
-      SessionStatus.ready => (Colors.green, Icons.check_circle),
-      SessionStatus.active => (Colors.blue, Icons.play_circle),
-      SessionStatus.finished => (Colors.grey, Icons.stop_circle),
-      SessionStatus.crashed => (Colors.red, Icons.error),
+      SessionStatus.ready => (Colors.green, Icons.check_circle_outline),
+      SessionStatus.active => (Colors.green, Icons.play_circle),
+      SessionStatus.finished => (Colors.grey, Icons.stop_circle_outlined),
+      SessionStatus.crashed => (Colors.red, Icons.error_outline),
     };
 
     return Container(
