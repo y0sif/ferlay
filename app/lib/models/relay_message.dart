@@ -29,10 +29,14 @@ class ControlMessage {
     );
   }
 
-  static ControlMessage pairWithCode(String code) {
+  static ControlMessage pairWithCode(String code, {String? publicKey}) {
     return ControlMessage(
       type: 'pair_with_code',
-      data: {'type': 'pair_with_code', 'code': code},
+      data: {
+        'type': 'pair_with_code',
+        'code': code,
+        if (publicKey != null) 'public_key': publicKey,
+      },
     );
   }
 
@@ -82,6 +86,13 @@ class AppMessage {
     return {
       'type': 'key_exchange',
       'public_key': publicKey,
+    };
+  }
+
+  static Map<String, dynamic> encryptionVerifyAck(String challenge) {
+    return {
+      'type': 'encryption_verify_ack',
+      'challenge': challenge,
     };
   }
 }

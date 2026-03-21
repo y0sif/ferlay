@@ -5,6 +5,7 @@ use tokio::sync::mpsc;
 use furlay_shared::messages::ControlMessage;
 
 use crate::config::Config;
+use crate::crypto::CryptoState;
 use crate::messages::AppMessage;
 use crate::session::SessionManager;
 use crate::{pairing, relay};
@@ -62,13 +63,22 @@ pub async fn run(config: Config, relay_url: String) {
     {
         Ok(crypto) => {
             tracing::info!("Pairing complete with E2E encryption");
-            Some(Arc::new(crypto))
+            Arc::new(crypto)
         }
         Err(e) => {
             tracing::error!(error = %e, "Pairing failed");
             return;
         }
     };
+
+    // Encryption verification handshake
+    if let Err(e) = verify_encryption(&crypto, &outgoing_tx, &mut incoming_rx).await {
+        tracing::error!(error = %e, "Encryption verification failed");
+        return;
+    }
+    tracing::info!("Encryption verified successfully");
+
+    let crypto = Some(crypto);
 
     // Main message loop
     let mut session_manager = SessionManager::new(outgoing_tx.clone(), crypto.clone());
@@ -129,6 +139,74 @@ pub async fn run(config: Config, relay_url: String) {
     tracing::info!("Relay connection lost. Daemon exiting.");
 }
 
+/// Sends an encrypted challenge and waits for the app to echo it back.
+/// This verifies both sides derived the same AES key.
+async fn verify_encryption(
+    crypto: &CryptoState,
+    outgoing_tx: &mpsc::UnboundedSender<String>,
+    incoming_rx: &mut mpsc::UnboundedReceiver<String>,
+) -> Result<(), String> {
+    // Generate random challenge
+    let mut challenge_bytes = [0u8; 32];
+    rand::fill(&mut challenge_bytes);
+    let challenge: String = challenge_bytes.iter().map(|b| format!("{:02x}", b)).collect();
+
+    // Send encrypted challenge
+    let msg = AppMessage::EncryptionVerify {
+        challenge: challenge.clone(),
+    };
+    let plaintext = serde_json::to_string(&msg).unwrap();
+    let encrypted = crypto
+        .encrypt(plaintext.as_bytes())
+        .map_err(|e| format!("Failed to encrypt challenge: {e}"))?;
+
+    let control = furlay_shared::messages::ControlMessage::Relay {
+        payload: serde_json::Value::String(encrypted),
+    };
+    outgoing_tx
+        .send(serde_json::to_string(&control).unwrap())
+        .map_err(|e| format!("Failed to send challenge: {e}"))?;
+
+    tracing::info!("Sent encryption verification challenge, waiting for ack...");
+
+    // Wait for ack with timeout
+    let timeout = tokio::time::Duration::from_secs(30);
+    let result = tokio::time::timeout(timeout, async {
+        loop {
+            let raw = incoming_rx
+                .recv()
+                .await
+                .ok_or_else(|| "Relay connection closed".to_string())?;
+
+            // Try to decrypt as encrypted payload
+            if let Ok(serde_json::Value::String(encrypted)) =
+                serde_json::from_str::<serde_json::Value>(&raw)
+            {
+                if let Ok(plaintext_bytes) = crypto.decrypt(&encrypted) {
+                    let plaintext_str = String::from_utf8_lossy(&plaintext_bytes);
+                    if let Ok(AppMessage::EncryptionVerifyAck {
+                        challenge: ack_challenge,
+                    }) = serde_json::from_str::<AppMessage>(&plaintext_str)
+                    {
+                        if ack_challenge == challenge {
+                            return Ok(());
+                        } else {
+                            return Err("Challenge mismatch — keys differ".to_string());
+                        }
+                    }
+                }
+            }
+            // Ignore non-matching messages (e.g. control messages during verification)
+        }
+    })
+    .await;
+
+    match result {
+        Ok(inner) => inner,
+        Err(_) => Err("Encryption verification timed out after 30s".to_string()),
+    }
+}
+
 async fn handle_app_message(
     session_manager: &mut SessionManager,
     msg: AppMessage,
@@ -152,7 +230,9 @@ async fn handle_app_message(
         AppMessage::SessionReady { .. }
         | AppMessage::SessionStatus { .. }
         | AppMessage::SessionsList { .. }
-        | AppMessage::KeyExchange { .. } => {}
+        | AppMessage::KeyExchange { .. }
+        | AppMessage::EncryptionVerify { .. }
+        | AppMessage::EncryptionVerifyAck { .. } => {}
     }
 }
 

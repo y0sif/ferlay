@@ -107,11 +107,51 @@ class AuthNotifier extends Notifier<PairingState> {
         peerPublicKeyBytes: daemonPkBytes,
       );
       relay.setCrypto(crypto);
-      dev.log('E2E encryption established', name: 'Ferlay');
-      state = PairingState.paired;
+      dev.log('E2E encryption keys derived, waiting for verification...', name: 'Ferlay');
+
+      // Wait for encryption verification challenge from daemon
+      final verified = await _waitForEncryptionVerification(relay);
+      if (verified) {
+        dev.log('E2E encryption verified successfully', name: 'Ferlay');
+        state = PairingState.paired;
+      } else {
+        dev.log('E2E encryption verification failed', name: 'Ferlay');
+        await crypto.clearKey();
+        await StorageService.clearPairing();
+        state = PairingState.unpaired;
+      }
     } else {
       await StorageService.clearPairing();
       state = PairingState.unpaired;
+    }
+  }
+
+  /// Waits for the daemon's encryption_verify challenge and responds with ack.
+  Future<bool> _waitForEncryptionVerification(dynamic relay) async {
+    final completer = Completer<bool>();
+
+    final sub = relay.incoming.listen((Map<String, dynamic> msg) {
+      if (msg['type'] == 'encryption_verify') {
+        final challenge = msg['challenge'] as String?;
+        if (challenge != null) {
+          dev.log('Received encryption verification challenge', name: 'Ferlay');
+          // Respond with the same challenge
+          relay.sendRelay(AppMessage.encryptionVerifyAck(challenge));
+          if (!completer.isCompleted) completer.complete(true);
+        }
+      }
+    });
+
+    try {
+      return await completer.future.timeout(
+        const Duration(seconds: 30),
+        onTimeout: () {
+          dev.log('Encryption verification timed out', name: 'Ferlay');
+          return false;
+        },
+      );
+    } finally {
+      await sub.cancel();
     }
   }
 
