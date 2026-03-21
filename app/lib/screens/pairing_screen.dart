@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
@@ -21,6 +22,7 @@ class _PairingScreenState extends ConsumerState<PairingScreen> {
   bool _showManualInput = false;
   bool _processing = false;
   String? _error;
+  String _processingMessage = 'Pairing...';
 
   @override
   void dispose() {
@@ -118,6 +120,22 @@ class _PairingScreenState extends ConsumerState<PairingScreen> {
 
   Future<void> _doPairing(String relayUrl, String code,
       {String? daemonPublicKey}) async {
+    setState(() => _processingMessage = 'Connecting to relay...');
+
+    // Show progress updates
+    Timer(const Duration(seconds: 3), () {
+      if (mounted && _processing) {
+        setState(
+            () => _processingMessage = 'Waiting for daemon response...');
+      }
+    });
+    Timer(const Duration(seconds: 8), () {
+      if (mounted && _processing) {
+        setState(
+            () => _processingMessage = 'Establishing encryption...');
+      }
+    });
+
     await ref
         .read(authProvider.notifier)
         .startPairing(relayUrl, code, daemonPublicKeyB64: daemonPublicKey);
@@ -135,7 +153,8 @@ class _PairingScreenState extends ConsumerState<PairingScreen> {
       Navigator.of(context).pushReplacementNamed('/sessions');
     } else {
       setState(() {
-        _error = 'Pairing failed. Check the code and try again.';
+        _error =
+            'Pairing timed out. Make sure the daemon is running and showing the QR code.';
         _processing = false;
       });
     }
@@ -157,7 +176,16 @@ class _PairingScreenState extends ConsumerState<PairingScreen> {
       children: [
         Expanded(
           child: _processing
-              ? const Center(child: CircularProgressIndicator())
+              ? Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const CircularProgressIndicator(),
+                      const SizedBox(height: 16),
+                      Text(_processingMessage),
+                    ],
+                  ),
+                )
               : MobileScanner(
                   onDetect: (BarcodeCapture capture) {
                     final value = capture.barcodes.firstOrNull?.rawValue;

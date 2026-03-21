@@ -22,13 +22,18 @@ class _NewSessionScreenState extends ConsumerState<NewSessionScreen> {
   final _directoryController = TextEditingController(text: '~/Projects/');
   final _nameController = TextEditingController();
   bool _loading = false;
+  String _loadingMessage = '';
   StreamSubscription<RelayConnectionState>? _disconnectSub;
+  Timer? _progressTimer;
+  Timer? _timeoutTimer;
 
   @override
   void dispose() {
     _directoryController.dispose();
     _nameController.dispose();
     _disconnectSub?.cancel();
+    _progressTimer?.cancel();
+    _timeoutTimer?.cancel();
     super.dispose();
   }
 
@@ -59,7 +64,10 @@ class _NewSessionScreenState extends ConsumerState<NewSessionScreen> {
       return;
     }
 
-    setState(() => _loading = true);
+    setState(() {
+      _loading = true;
+      _loadingMessage = 'Sending to daemon...';
+    });
     HapticFeedback.lightImpact();
 
     ref.read(sessionsProvider.notifier).startSession(
@@ -67,13 +75,31 @@ class _NewSessionScreenState extends ConsumerState<NewSessionScreen> {
           name: name.isNotEmpty ? name : 'session',
         );
 
+    // Progressive loading messages
+    _progressTimer?.cancel();
+    _progressTimer = Timer(const Duration(seconds: 3), () {
+      if (mounted && _loading) {
+        setState(() => _loadingMessage = 'Daemon is starting Claude...');
+      }
+    });
+    Timer(const Duration(seconds: 8), () {
+      if (mounted && _loading) {
+        setState(() => _loadingMessage = 'Waiting for session URL...');
+      }
+    });
+    Timer(const Duration(seconds: 14), () {
+      if (mounted && _loading) {
+        setState(() => _loadingMessage =
+            'Taking longer than usual. Check that the daemon is running.');
+      }
+    });
+
     // Watch for disconnection while waiting
     _disconnectSub?.cancel();
     _disconnectSub =
         ref.read(relayServiceProvider).stateStream.listen((relayState) {
       if (relayState == RelayConnectionState.disconnected && _loading) {
-        setState(() => _loading = false);
-        _disconnectSub?.cancel();
+        _cancelLoading();
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
@@ -84,10 +110,10 @@ class _NewSessionScreenState extends ConsumerState<NewSessionScreen> {
     });
 
     // Timeout after 20s
-    Future.delayed(const Duration(seconds: 20), () {
+    _timeoutTimer?.cancel();
+    _timeoutTimer = Timer(const Duration(seconds: 20), () {
       if (mounted && _loading) {
-        setState(() => _loading = false);
-        _disconnectSub?.cancel();
+        _cancelLoading();
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text(
@@ -97,6 +123,16 @@ class _NewSessionScreenState extends ConsumerState<NewSessionScreen> {
         );
       }
     });
+  }
+
+  void _cancelLoading() {
+    setState(() {
+      _loading = false;
+      _loadingMessage = '';
+    });
+    _disconnectSub?.cancel();
+    _progressTimer?.cancel();
+    _timeoutTimer?.cancel();
   }
 
   @override
@@ -110,8 +146,7 @@ class _NewSessionScreenState extends ConsumerState<NewSessionScreen> {
       final newReady = next.where(
           (s) => s.status == SessionStatus.ready && !prevIds.contains(s.id));
       if (newReady.isNotEmpty) {
-        setState(() => _loading = false);
-        _disconnectSub?.cancel();
+        _cancelLoading();
         Navigator.of(context).pushReplacementNamed(
           '/sessions/detail',
           arguments: newReady.first,
@@ -134,6 +169,7 @@ class _NewSessionScreenState extends ConsumerState<NewSessionScreen> {
                 controller: _directoryController,
                 validator: _validateDirectory,
                 autovalidateMode: AutovalidateMode.onUserInteraction,
+                enabled: !_loading,
                 decoration: const InputDecoration(
                   labelText: 'Directory',
                   hintText: '~/Projects/my-app',
@@ -144,6 +180,7 @@ class _NewSessionScreenState extends ConsumerState<NewSessionScreen> {
               const SizedBox(height: 16),
               TextFormField(
                 controller: _nameController,
+                enabled: !_loading,
                 decoration: const InputDecoration(
                   labelText: 'Session Name (optional)',
                   hintText: 'refactor',
@@ -163,11 +200,18 @@ class _NewSessionScreenState extends ConsumerState<NewSessionScreen> {
                       )
                     : const Icon(Icons.play_arrow),
                 label: Text(_loading
-                    ? 'Starting...'
+                    ? _loadingMessage
                     : connState.canStartSession
                         ? 'Start Session'
                         : connState.disabledReason ?? 'Cannot start'),
               ),
+              if (_loading) ...[
+                const SizedBox(height: 12),
+                TextButton(
+                  onPressed: _cancelLoading,
+                  child: const Text('Cancel'),
+                ),
+              ],
               if (!connState.canStartSession && !_loading) ...[
                 const SizedBox(height: 8),
                 Text(
