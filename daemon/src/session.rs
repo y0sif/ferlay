@@ -258,6 +258,23 @@ async fn monitor_child(
     crypto: Option<Arc<CryptoState>>,
     mut stdout_lines: tokio::io::Lines<tokio::io::BufReader<tokio::process::ChildStdout>>,
 ) {
+    // Collect stderr in background for crash reporting
+    let stderr_handle = child.stderr.take().map(|stderr| {
+        tokio::spawn(async move {
+            use tokio::io::{AsyncBufReadExt, BufReader};
+            let mut lines = BufReader::new(stderr).lines();
+            let mut last_lines: Vec<String> = Vec::new();
+            while let Ok(Some(line)) = lines.next_line().await {
+                // Keep only last 5 lines of stderr
+                if last_lines.len() >= 5 {
+                    last_lines.remove(0);
+                }
+                last_lines.push(line);
+            }
+            last_lines
+        })
+    });
+
     // Keep draining stdout to avoid blocking the process and to keep the pipe open
     let status = loop {
         tokio::select! {
@@ -277,16 +294,46 @@ async fn monitor_child(
             }
         }
     };
+
+    // Collect last stderr lines
+    let stderr_lines = match stderr_handle {
+        Some(handle) => handle.await.unwrap_or_default(),
+        None => Vec::new(),
+    };
+    let stderr_snippet = if stderr_lines.is_empty() {
+        String::new()
+    } else {
+        format!("\nLast stderr:\n{}", stderr_lines.join("\n"))
+    };
+
     let (status_str, error) = match status {
         Ok(s) if s.success() => ("finished", None),
-        Ok(s) => (
-            "crashed",
-            Some(format!(
-                "process exited with code {}",
-                s.code().unwrap_or(-1)
-            )),
-        ),
-        Err(e) => ("crashed", Some(format!("wait error: {e}"))),
+        Ok(s) => {
+            let error_msg = match s.code() {
+                Some(1) => format!("Claude encountered an error (exit code 1){stderr_snippet}"),
+                Some(127) => "Claude command not found (exit code 127)".to_string(),
+                Some(137) => "Claude was killed (possibly out of memory, exit code 137)".to_string(),
+                Some(code) => format!("Claude exited with code {code}{stderr_snippet}"),
+                None => {
+                    // Killed by signal
+                    #[cfg(unix)]
+                    {
+                        use std::os::unix::process::ExitStatusExt;
+                        if let Some(sig) = s.signal() {
+                            format!("Claude was terminated by signal {sig}{stderr_snippet}")
+                        } else {
+                            format!("Claude was terminated by signal{stderr_snippet}")
+                        }
+                    }
+                    #[cfg(not(unix))]
+                    {
+                        format!("Claude was terminated{stderr_snippet}")
+                    }
+                }
+            };
+            ("crashed", Some(error_msg))
+        }
+        Err(e) => ("crashed", Some(format!("Process wait error: {e}"))),
     };
 
     tracing::info!(session_id = %session_id, status = status_str, "Session process exited");
