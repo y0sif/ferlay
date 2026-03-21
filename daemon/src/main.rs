@@ -23,7 +23,11 @@ struct Cli {
 #[derive(Subcommand)]
 enum Commands {
     /// Start the daemon (pairs if needed, then connects to relay and listens for commands)
-    Daemon,
+    Daemon {
+        /// Force new pairing even if a saved encryption key exists
+        #[arg(long)]
+        re_pair: bool,
+    },
 
     /// Show daemon status + active sessions
     Status,
@@ -77,9 +81,9 @@ async fn main() {
     let relay_url = cli.relay.unwrap_or_else(|| cfg.relay_url.clone());
 
     match cli.command {
-        Commands::Daemon => {
-            tracing::info!(relay = %relay_url, device_id = %cfg.device_id, "Starting daemon");
-            daemon::run(cfg, relay_url).await;
+        Commands::Daemon { re_pair } => {
+            tracing::info!(relay = %relay_url, device_id = %cfg.device_id, re_pair = re_pair, "Starting daemon");
+            daemon::run(cfg, relay_url, re_pair).await;
         }
         Commands::Status => {
             // Check health endpoint

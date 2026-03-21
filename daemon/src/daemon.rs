@@ -11,8 +11,9 @@ use crate::session::SessionManager;
 use crate::{pairing, relay};
 
 /// Runs the main daemon loop: connects to relay, handles commands, manages sessions.
-/// If not yet paired, runs the pairing flow first on the same connection.
-pub async fn run(config: Config, relay_url: String) {
+/// If not yet paired (or --re-pair is set), runs the pairing flow first.
+/// Otherwise, reuses saved encryption key and skips pairing.
+pub async fn run(config: Config, relay_url: String, re_pair: bool) {
     // Channels bridging relay WebSocket ↔ daemon logic
     let (outgoing_tx, outgoing_rx) = mpsc::unbounded_channel::<String>();
     let (incoming_tx, mut incoming_rx) = mpsc::unbounded_channel::<String>();
@@ -57,26 +58,44 @@ pub async fn run(config: Config, relay_url: String) {
         }
     }
 
-    // Run pairing flow with key exchange (encryption is mandatory)
-    tracing::info!("Starting pairing flow...");
-    let crypto = match pairing::run_pairing(&relay_url, &config.device_id, &outgoing_tx, &mut incoming_rx).await
-    {
-        Ok(crypto) => {
-            tracing::info!("Pairing complete with E2E encryption");
-            Arc::new(crypto)
+    // Try to load saved encryption key (skip pairing if valid key exists)
+    let need_pairing = re_pair || CryptoState::load_key().is_none();
+
+    let crypto = if !need_pairing {
+        let saved_crypto = CryptoState::load_key().unwrap();
+        tracing::info!("Loaded saved encryption key, skipping pairing flow");
+        println!("Using saved encryption key (use --re-pair to force new pairing)");
+        Arc::new(saved_crypto)
+    } else {
+        if re_pair {
+            tracing::info!("--re-pair flag set, forcing new pairing");
+            println!("Forcing new pairing...");
+        } else {
+            tracing::info!("No saved encryption key found, starting pairing flow");
         }
-        Err(e) => {
-            tracing::error!(error = %e, "Pairing failed");
-            return;
+
+        // Run pairing flow with key exchange (encryption is mandatory)
+        match pairing::run_pairing(&relay_url, &config.device_id, &outgoing_tx, &mut incoming_rx).await
+        {
+            Ok(crypto) => {
+                tracing::info!("Pairing complete with E2E encryption");
+                Arc::new(crypto)
+            }
+            Err(e) => {
+                tracing::error!(error = %e, "Pairing failed");
+                return;
+            }
         }
     };
 
-    // Encryption verification handshake
-    if let Err(e) = verify_encryption(&crypto, &outgoing_tx, &mut incoming_rx).await {
-        tracing::error!(error = %e, "Encryption verification failed");
-        return;
+    // Run encryption verification if we just paired (not when using saved key)
+    if need_pairing {
+        if let Err(e) = verify_encryption(&crypto, &outgoing_tx, &mut incoming_rx).await {
+            tracing::error!(error = %e, "Encryption verification failed");
+            return;
+        }
+        tracing::info!("Encryption verified successfully");
     }
-    tracing::info!("Encryption verified successfully");
 
     let crypto = Some(crypto);
 
