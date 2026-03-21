@@ -16,7 +16,18 @@ pub fn handle_message(
             device_id: id,
             fcm_token,
         } => {
-            tracing::info!(device_id = %id, "Device registered");
+            // Preserve existing pairing when a device re-registers
+            // (e.g. app reload or daemon reconnect after network drop)
+            let existing_pairing = state
+                .devices
+                .get(id.as_str())
+                .and_then(|d| d.paired_with.clone());
+
+            if existing_pairing.is_some() {
+                tracing::info!(device_id = %id, paired_with = ?existing_pairing, "Device re-registered (pairing preserved)");
+            } else {
+                tracing::info!(device_id = %id, "Device registered");
+            }
 
             // Clear disconnect time on reconnect
             state.clear_disconnect(id);
@@ -25,7 +36,7 @@ pub fn handle_message(
                 id.clone(),
                 DeviceConnection {
                     device_id: id.clone(),
-                    paired_with: None,
+                    paired_with: existing_pairing,
                     fcm_token: fcm_token.clone(),
                     tx: tx.clone(),
                 },
