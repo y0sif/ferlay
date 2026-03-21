@@ -40,7 +40,10 @@ pub enum ControlMessage {
     KeyExchange { public_key: String },
 
     #[serde(rename = "error")]
-    Error { message: String },
+    Error {
+        code: String,
+        message: String,
+    },
 }
 
 #[cfg(test)]
@@ -96,10 +99,13 @@ mod tests {
 
     #[test]
     fn error_message_roundtrip() {
-        let json = r#"{"type":"error","message":"something failed"}"#;
+        let json = r#"{"type":"error","code":"test_error","message":"something failed"}"#;
         let msg: ControlMessage = serde_json::from_str(json).unwrap();
         match msg {
-            ControlMessage::Error { message } => assert_eq!(message, "something failed"),
+            ControlMessage::Error { code, message } => {
+                assert_eq!(code, "test_error");
+                assert_eq!(message, "something failed");
+            }
             _ => panic!("wrong variant"),
         }
     }

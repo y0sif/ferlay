@@ -167,10 +167,7 @@ async fn test_invalid_pairing_code() {
     .await;
     let resp = recv_json(&mut rx).await;
     assert_eq!(resp["type"], "error");
-    assert!(resp["message"]
-        .as_str()
-        .unwrap()
-        .contains("invalid or expired"));
+    assert_eq!(resp["code"], "pairing_invalid");
 }
 
 // ─── Test 3: Unpaired device tries to relay → error ───
@@ -194,10 +191,7 @@ async fn test_relay_without_pairing() {
     .await;
     let resp = recv_json(&mut rx).await;
     assert_eq!(resp["type"], "error");
-    assert!(resp["message"]
-        .as_str()
-        .unwrap()
-        .contains("not paired"));
+    assert_eq!(resp["code"], "not_paired");
 }
 
 // ─── Test 4: Not registered → error on create_pairing_code ───
@@ -210,7 +204,7 @@ async fn test_create_pairing_code_without_register() {
     send_json(&mut tx, json!({"type": "create_pairing_code"})).await;
     let resp = recv_json(&mut rx).await;
     assert_eq!(resp["type"], "error");
-    assert!(resp["message"].as_str().unwrap().contains("not registered"));
+    assert_eq!(resp["code"], "not_registered");
 }
 
 // ─── Test 5: Offline buffering → reconnect → receive buffered ───

@@ -39,6 +39,7 @@ async fn handle_socket(socket: WebSocket, state: Arc<AppState>) {
         match msg {
             Message::Text(text) => {
                 let text = text.to_string();
+                tracing::debug!(raw = %text, "WS received");
                 match serde_json::from_str::<ControlMessage>(&text) {
                     Ok(ctrl_msg) => {
                         router::handle_message(&state, &tx, &mut device_id, &ctrl_msg);
@@ -46,6 +47,7 @@ async fn handle_socket(socket: WebSocket, state: Arc<AppState>) {
                     Err(e) => {
                         tracing::warn!(error = %e, "Invalid message received");
                         let err = ControlMessage::Error {
+                            code: "invalid_message".to_string(),
                             message: format!("invalid message: {e}"),
                         };
                         let _ = tx.send(serde_json::to_string(&err).unwrap());

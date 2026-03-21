@@ -44,7 +44,8 @@ pub fn handle_message(
         ControlMessage::CreatePairingCode => {
             let Some(id) = device_id.as_ref() else {
                 send_to(tx, &ControlMessage::Error {
-                    message: "not registered".to_string(),
+                    code: "not_registered".to_string(),
+                    message: "Not registered. Send a Register message first.".to_string(),
                 });
                 return;
             };
@@ -53,13 +54,18 @@ pub fn handle_message(
             send_to(tx, &ControlMessage::PairingCode { code });
         }
 
-        ControlMessage::PairWithCode { code } => {
+        ControlMessage::PairWithCode { code, public_key } => {
+            tracing::info!(has_public_key = public_key.is_some(), "PairWithCode received");
             let Some(my_id) = device_id.as_ref() else {
                 send_to(tx, &ControlMessage::Error {
-                    message: "not registered".to_string(),
+                    code: "not_registered".to_string(),
+                    message: "Not registered. Send a Register message first.".to_string(),
                 });
                 return;
             };
+
+            // Check if code exists before consuming it (to distinguish invalid vs expired)
+            let code_exists = state.pairing_codes.contains_key(code.as_str());
 
             match validate_pairing_code(state, code) {
                 Some(other_id) => {
@@ -73,18 +79,30 @@ pub fn handle_message(
                         d.paired_with = Some(my_id.clone());
                     }
 
-                    // Notify both sides
+                    // Notify the pairing initiator (app) — no key needed, app has daemon's key from QR
                     send_to(tx, &ControlMessage::Paired {
                         paired_with: other_id.clone(),
+                        public_key: None,
                     });
+                    // Notify the code creator (daemon) — forward the app's public key
                     send_to_device(state, &other_id, &ControlMessage::Paired {
                         paired_with: my_id.clone(),
+                        public_key: public_key.clone(),
                     });
                 }
                 None => {
-                    send_to(tx, &ControlMessage::Error {
-                        message: "invalid or expired pairing code".to_string(),
-                    });
+                    if code_exists {
+                        // Code existed but was expired
+                        send_to(tx, &ControlMessage::Error {
+                            code: "pairing_expired".to_string(),
+                            message: "Pairing code expired. Generate a new one.".to_string(),
+                        });
+                    } else {
+                        send_to(tx, &ControlMessage::Error {
+                            code: "pairing_invalid".to_string(),
+                            message: "Invalid pairing code.".to_string(),
+                        });
+                    }
                 }
             }
         }
@@ -92,7 +110,8 @@ pub fn handle_message(
         ControlMessage::Relay { payload } => {
             let Some(my_id) = device_id.as_ref() else {
                 send_to(tx, &ControlMessage::Error {
-                    message: "not registered".to_string(),
+                    code: "not_registered".to_string(),
+                    message: "Not registered. Send a Register message first.".to_string(),
                 });
                 return;
             };
@@ -120,11 +139,16 @@ pub fn handle_message(
                             "Target offline, buffering message"
                         );
                         buffer_message(state, &target_id, payload_str);
+                        send_to(tx, &ControlMessage::Error {
+                            code: "peer_offline".to_string(),
+                            message: "Paired device is offline. Message buffered.".to_string(),
+                        });
                     }
                 }
                 None => {
                     send_to(tx, &ControlMessage::Error {
-                        message: "not paired with any device".to_string(),
+                        code: "not_paired".to_string(),
+                        message: "No paired device. Re-pair to continue.".to_string(),
                     });
                 }
             }
@@ -134,6 +158,7 @@ pub fn handle_message(
         ControlMessage::Registered { .. }
         | ControlMessage::PairingCode { .. }
         | ControlMessage::Paired { .. }
+        | ControlMessage::KeyExchange { .. }
         | ControlMessage::Error { .. } => {}
     }
 }
