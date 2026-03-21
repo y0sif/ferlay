@@ -56,7 +56,7 @@ pub async fn run(config: Config, relay_url: String) {
         }
     }
 
-    // Run pairing flow with key exchange
+    // Run pairing flow with key exchange (encryption is mandatory)
     tracing::info!("Starting pairing flow...");
     let crypto = match pairing::run_pairing(&relay_url, &config.device_id, &outgoing_tx, &mut incoming_rx).await
     {
@@ -79,7 +79,7 @@ pub async fn run(config: Config, relay_url: String) {
         // Try as ControlMessage first (pairing, etc. — never encrypted)
         if let Ok(ctrl) = serde_json::from_str::<ControlMessage>(&raw) {
             match ctrl {
-                ControlMessage::Paired { paired_with } => {
+                ControlMessage::Paired { paired_with, .. } => {
                     tracing::info!(paired_with = %paired_with, "Device paired");
                     continue;
                 }
@@ -91,7 +91,7 @@ pub async fn run(config: Config, relay_url: String) {
             }
         }
 
-        // Try as encrypted relay payload (JSON string containing base64 blob)
+        // All relay messages must be encrypted — no plaintext fallback
         if let Some(ref crypto) = crypto {
             if let Ok(serde_json::Value::String(encrypted)) =
                 serde_json::from_str::<serde_json::Value>(&raw)
@@ -110,25 +110,19 @@ pub async fn run(config: Config, relay_url: String) {
                                 continue;
                             }
                             Err(e) => {
-                                tracing::debug!(error = %e, "Decrypted but not an AppMessage");
+                                tracing::warn!(error = %e, "Decrypted payload is not a valid AppMessage, dropping");
                             }
                         }
                     }
                     Err(e) => {
-                        tracing::debug!(error = %e, "Decryption failed, trying plaintext");
+                        tracing::warn!(error = %e, "Decryption failed, dropping message (no plaintext fallback)");
                     }
                 }
+            } else {
+                tracing::debug!(raw = %raw, "Unhandled non-string message");
             }
-        }
-
-        // Fallback: try as unencrypted AppMessage
-        match serde_json::from_str::<AppMessage>(&raw) {
-            Ok(app_msg) => {
-                handle_app_message(&mut session_manager, app_msg, &health_sessions).await;
-            }
-            Err(e) => {
-                tracing::debug!(error = %e, raw = %raw, "Unhandled message");
-            }
+        } else {
+            tracing::warn!("Received relay message but no encryption key established, dropping");
         }
     }
 

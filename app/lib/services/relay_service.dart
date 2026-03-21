@@ -22,9 +22,11 @@ class RelayService {
 
   final _incomingController = StreamController<Map<String, dynamic>>.broadcast();
   final _stateController = StreamController<RelayConnectionState>.broadcast();
+  final _errorController = StreamController<String>.broadcast();
 
   Stream<Map<String, dynamic>> get incoming => _incomingController.stream;
   Stream<RelayConnectionState> get stateStream => _stateController.stream;
+  Stream<String> get errors => _errorController.stream;
   RelayConnectionState get state => _state;
 
   /// Sets the crypto service for encrypting/decrypting relay payloads.
@@ -75,11 +77,22 @@ class RelayService {
       final decoded = jsonDecode(raw);
 
       if (decoded is Map<String, dynamic>) {
-        // Unencrypted JSON object (control messages or legacy app messages)
+        // Check if this is a relay message with an encrypted payload
+        if (decoded['type'] == 'relay' && decoded['payload'] is String) {
+          if (_crypto != null && _crypto!.isReady) {
+            _decryptAndEmit(decoded['payload'] as String);
+          } else {
+            _emitError('Received encrypted message but no encryption key established');
+          }
+          return;
+        }
+        // Control messages (register, paired, error, etc.) are not encrypted
         _incomingController.add(decoded);
       } else if (decoded is String && _crypto != null && _crypto!.isReady) {
         // Encrypted relay payload (JSON string containing base64 blob)
         _decryptAndEmit(decoded);
+      } else if (decoded is String) {
+        _emitError('Received encrypted message but no encryption key established');
       }
     } catch (_) {}
   }
@@ -90,7 +103,13 @@ class RelayService {
       final json = jsonDecode(plaintext) as Map<String, dynamic>;
       _incomingController.add(json);
     } catch (e) {
-      // Decryption failed — could be a non-encrypted string, ignore
+      _emitError('Failed to decrypt message from daemon: $e');
+    }
+  }
+
+  void _emitError(String message) {
+    if (!_errorController.isClosed) {
+      _errorController.add(message);
     }
   }
 
@@ -98,13 +117,14 @@ class RelayService {
     _channel?.sink.add(msg.toJson());
   }
 
-  /// Sends an app-level message via relay, encrypting if crypto is available.
+  /// Sends an app-level message via relay. Encryption is mandatory.
+  /// Throws if no encryption key is available or encryption fails.
   void sendRelay(Map<String, dynamic> payload) {
-    if (_crypto != null && _crypto!.isReady) {
-      _sendEncrypted(payload);
-    } else {
-      send(ControlMessage.relay(payload));
+    if (_crypto == null || !_crypto!.isReady) {
+      _emitError('Cannot send message: no encryption key established');
+      return;
     }
+    _sendEncrypted(payload);
   }
 
   Future<void> _sendEncrypted(Map<String, dynamic> payload) async {
@@ -113,8 +133,7 @@ class RelayService {
       final encrypted = await _crypto!.encrypt(plaintext);
       send(ControlMessage.relayEncrypted(encrypted));
     } catch (e) {
-      // Fallback to unencrypted on error
-      send(ControlMessage.relay(payload));
+      _emitError('Encryption failed, message not sent: $e');
     }
   }
 
@@ -148,5 +167,6 @@ class RelayService {
     _channel?.sink.close();
     _incomingController.close();
     _stateController.close();
+    _errorController.close();
   }
 }

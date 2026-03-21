@@ -184,29 +184,32 @@ impl SessionManager {
     }
 
     fn send_relay(&self, msg: &AppMessage) {
-        let json = send_encrypted_relay(msg, self.crypto.as_deref());
-        let _ = self.relay_tx.send(json);
+        if let Some(json) = send_encrypted_relay(msg, self.crypto.as_deref()) {
+            let _ = self.relay_tx.send(json);
+        }
     }
 }
 
 /// Encrypts an AppMessage and wraps it in a ControlMessage::Relay.
-/// If crypto is None, sends the payload unencrypted.
-fn send_encrypted_relay(msg: &AppMessage, crypto: Option<&CryptoState>) -> String {
-    let payload = if let Some(crypto) = crypto {
-        let plaintext = serde_json::to_string(msg).unwrap();
-        match crypto.encrypt(plaintext.as_bytes()) {
-            Ok(encrypted) => serde_json::Value::String(encrypted),
-            Err(e) => {
-                tracing::error!(error = %e, "Encryption failed, sending unencrypted");
-                serde_json::to_value(msg).unwrap()
-            }
-        }
-    } else {
-        serde_json::to_value(msg).unwrap()
+/// Encryption is mandatory — returns None if crypto is unavailable or encryption fails.
+fn send_encrypted_relay(msg: &AppMessage, crypto: Option<&CryptoState>) -> Option<String> {
+    let Some(crypto) = crypto else {
+        tracing::error!("Cannot send relay message: no encryption key established");
+        return None;
     };
 
-    let control = furlay_shared::messages::ControlMessage::Relay { payload };
-    serde_json::to_string(&control).unwrap()
+    let plaintext = serde_json::to_string(msg).unwrap();
+    match crypto.encrypt(plaintext.as_bytes()) {
+        Ok(encrypted) => {
+            let payload = serde_json::Value::String(encrypted);
+            let control = furlay_shared::messages::ControlMessage::Relay { payload };
+            Some(serde_json::to_string(&control).unwrap())
+        }
+        Err(e) => {
+            tracing::error!(error = %e, "Encryption failed, dropping message");
+            None
+        }
+    }
 }
 
 async fn monitor_child(
@@ -254,8 +257,9 @@ async fn monitor_child(
         status: status_str.to_string(),
         error,
     };
-    let json = send_encrypted_relay(&msg, crypto.as_deref());
-    let _ = relay_tx.send(json);
+    if let Some(json) = send_encrypted_relay(&msg, crypto.as_deref()) {
+        let _ = relay_tx.send(json);
+    }
 }
 
 fn shellexpand_tilde(path: &str) -> String {
@@ -265,4 +269,49 @@ fn shellexpand_tilde(path: &str) -> String {
         }
     }
     path.to_string()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn session_status_as_str() {
+        assert_eq!(SessionStatus::Starting.as_str(), "starting");
+        assert_eq!(SessionStatus::Ready.as_str(), "ready");
+        assert_eq!(SessionStatus::Active.as_str(), "active");
+        assert_eq!(SessionStatus::Finished.as_str(), "finished");
+        assert_eq!(SessionStatus::Crashed.as_str(), "crashed");
+    }
+
+    #[test]
+    fn tilde_expansion() {
+        let expanded = shellexpand_tilde("~/Projects/ferlay");
+        let home = dirs::home_dir().unwrap();
+        assert_eq!(
+            expanded,
+            home.join("Projects/ferlay").to_string_lossy().to_string()
+        );
+    }
+
+    #[test]
+    fn absolute_path_unchanged() {
+        assert_eq!(shellexpand_tilde("/usr/local/bin"), "/usr/local/bin");
+    }
+
+    #[test]
+    fn relative_path_unchanged() {
+        assert_eq!(shellexpand_tilde("relative/path"), "relative/path");
+    }
+
+    #[test]
+    fn bare_tilde_unchanged() {
+        // "~" without trailing "/" is not expanded
+        assert_eq!(shellexpand_tilde("~"), "~");
+    }
+
+    #[test]
+    fn tilde_in_middle_unchanged() {
+        assert_eq!(shellexpand_tilde("/home/~/test"), "/home/~/test");
+    }
 }

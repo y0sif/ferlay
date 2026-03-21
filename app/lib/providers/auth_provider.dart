@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:developer' as dev;
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -40,7 +41,8 @@ class AuthNotifier extends Notifier<PairingState> {
   }
 
   /// Starts the pairing flow with X25519 key exchange.
-  /// [daemonPublicKeyB64] is the daemon's public key from the QR code (may be null for legacy).
+  /// The app's public key is sent inside pair_with_code so the relay
+  /// forwards it to the daemon atomically in the paired notification.
   Future<void> startPairing(
     String relayUrl,
     String pairingCode, {
@@ -52,25 +54,17 @@ class AuthNotifier extends Notifier<PairingState> {
     await StorageService.setRelayUrl(relayUrl);
     await relay.connect(relayUrl);
 
-    // Pre-generate X25519 keypair so we can send it immediately on pairing
-    String? myPublicKeyB64;
-    ({
-      dynamic keyPair,
-      List<int> publicKeyBytes,
-    })? keypairResult;
-
-    if (daemonPublicKeyB64 != null) {
-      try {
-        final result = await CryptoService.generateKeyPair();
-        keypairResult = (
-          keyPair: result.keyPair,
-          publicKeyBytes: result.publicKeyBytes,
-        );
-        myPublicKeyB64 = base64Encode(result.publicKeyBytes);
-      } catch (e) {
-        // Key generation failed — proceed without encryption
-      }
+    // Always generate X25519 keypair — encryption is mandatory
+    if (daemonPublicKeyB64 == null) {
+      dev.log('ERROR: No daemon public key — encryption is mandatory', name: 'Ferlay');
+      state = PairingState.unpaired;
+      return;
     }
+
+    final result = await CryptoService.generateKeyPair();
+    final myKeyPair = result.keyPair;
+    final myPublicKeyB64 = base64Encode(result.publicKeyBytes);
+    dev.log('Generated keypair, publicKey: $myPublicKeyB64', name: 'Ferlay');
 
     // Listen for registration + pairing responses
     final completer = Completer<bool>();
@@ -81,18 +75,18 @@ class AuthNotifier extends Notifier<PairingState> {
 
       if (type == 'registered' && !registered) {
         registered = true;
-        relay.send(ControlMessage.pairWithCode(pairingCode));
+        dev.log('Registered, sending pair_with_code with publicKey', name: 'Ferlay');
+        // Include our public key in pair_with_code — relay forwards it
+        // to the daemon inside the paired notification
+        relay.send(
+          ControlMessage.pairWithCode(pairingCode, publicKey: myPublicKeyB64),
+        );
       } else if (type == 'paired') {
         final pairedWith = msg['paired_with'] ?? '';
         StorageService.setPairedDeviceId(pairedWith);
-
-        // Send key exchange immediately while the listener is active
-        if (myPublicKeyB64 != null) {
-          relay.sendRelayUnencrypted(AppMessage.keyExchange(myPublicKeyB64));
-        }
-
         if (!completer.isCompleted) completer.complete(true);
       } else if (type == 'error') {
+        dev.log('Relay error: ${msg['message']}', name: 'Ferlay');
         if (!completer.isCompleted) completer.complete(false);
       }
     });
@@ -104,24 +98,16 @@ class AuthNotifier extends Notifier<PairingState> {
 
     await sub.cancel();
 
-    // Derive shared secret after pairing succeeds
-    if (success &&
-        daemonPublicKeyB64 != null &&
-        keypairResult != null) {
-      try {
-        final daemonPkBytes = base64Decode(daemonPublicKeyB64);
-        final crypto = CryptoService();
-        await crypto.deriveKey(
-          myKeyPair: keypairResult.keyPair,
-          peerPublicKeyBytes: daemonPkBytes,
-        );
-        relay.setCrypto(crypto);
-      } catch (e) {
-        // Key derivation failed — continue without encryption
-      }
-    }
-
+    // Derive shared secret after pairing succeeds — encryption is mandatory
     if (success) {
+      final daemonPkBytes = base64Decode(daemonPublicKeyB64);
+      final crypto = CryptoService();
+      await crypto.deriveKey(
+        myKeyPair: myKeyPair,
+        peerPublicKeyBytes: daemonPkBytes,
+      );
+      relay.setCrypto(crypto);
+      dev.log('E2E encryption established', name: 'Ferlay');
       state = PairingState.paired;
     } else {
       await StorageService.clearPairing();
