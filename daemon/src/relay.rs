@@ -2,6 +2,10 @@ use futures_util::{SinkExt, StreamExt};
 use tokio::sync::mpsc;
 use tokio_tungstenite::{connect_async, tungstenite::Message};
 
+/// Special internal message sent when the relay connection is re-established.
+/// The daemon uses this to know it needs to re-register.
+pub const RECONNECTED_SENTINEL: &str = "__ferlay_reconnected__";
+
 /// Runs the persistent WebSocket connection to the relay server.
 /// Automatically reconnects with exponential backoff on disconnection.
 ///
@@ -13,6 +17,7 @@ pub async fn connection_loop(
     incoming_tx: mpsc::UnboundedSender<String>,
 ) {
     let mut backoff = 1u64;
+    let mut first_connect = true;
 
     loop {
         tracing::info!(url = %url, "Connecting to relay...");
@@ -22,6 +27,13 @@ pub async fn connection_loop(
                 tracing::info!("Connected to relay");
                 backoff = 1;
                 let (mut write, mut read) = ws_stream.split();
+
+                // Signal reconnection (not on first connect)
+                if !first_connect {
+                    tracing::info!("Reconnected to relay, signaling daemon");
+                    let _ = incoming_tx.send(RECONNECTED_SENTINEL.to_string());
+                }
+                first_connect = false;
 
                 loop {
                     tokio::select! {

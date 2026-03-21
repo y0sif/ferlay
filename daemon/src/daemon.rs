@@ -86,6 +86,39 @@ pub async fn run(config: Config, relay_url: String) {
     tracing::info!("Daemon running. Waiting for commands...");
 
     while let Some(raw) = incoming_rx.recv().await {
+        // Handle reconnection sentinel from relay connection loop
+        if raw == relay::RECONNECTED_SENTINEL {
+            tracing::info!("Relay reconnected, re-registering...");
+            let register = ControlMessage::Register {
+                device_id: config.device_id.clone(),
+                fcm_token: None,
+            };
+            let _ = outgoing_tx.send(serde_json::to_string(&register).unwrap());
+
+            // Wait for registration confirmation before resuming
+            loop {
+                let Some(reg_raw) = incoming_rx.recv().await else {
+                    tracing::error!("Relay connection closed during re-registration");
+                    continue;
+                };
+                match serde_json::from_str::<ControlMessage>(&reg_raw) {
+                    Ok(ControlMessage::Registered { device_id }) => {
+                        tracing::info!(device_id = %device_id, "Re-registered with relay after reconnect");
+                        // Re-send current session states so the app knows what's running
+                        let sessions = session_manager.list();
+                        session_manager.send_sessions_list(sessions);
+                        break;
+                    }
+                    Ok(ControlMessage::Error { code, message }) => {
+                        tracing::error!(code = %code, error = %message, "Re-registration failed");
+                        break;
+                    }
+                    _ => continue,
+                }
+            }
+            continue;
+        }
+
         // Try as ControlMessage first (pairing, etc. — never encrypted)
         if let Ok(ctrl) = serde_json::from_str::<ControlMessage>(&raw) {
             match ctrl {
@@ -136,7 +169,7 @@ pub async fn run(config: Config, relay_url: String) {
         }
     }
 
-    tracing::info!("Relay connection lost. Daemon exiting.");
+    tracing::info!("Relay connection permanently lost. Daemon exiting.");
 }
 
 /// Sends an encrypted challenge and waits for the app to echo it back.
