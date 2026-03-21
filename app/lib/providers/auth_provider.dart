@@ -41,8 +41,12 @@ class AuthNotifier extends Notifier<PairingState> {
   }
 
   /// Starts the pairing flow with X25519 key exchange.
-  /// The app's public key is sent inside pair_with_code so the relay
-  /// forwards it to the daemon atomically in the paired notification.
+  ///
+  /// Two paths:
+  /// - **QR scan**: `daemonPublicKeyB64` is provided — key exchange is atomic
+  ///   with pairing (app's public key sent in pair_with_code).
+  /// - **Manual code entry**: `daemonPublicKeyB64` is null — after pairing,
+  ///   daemon sends KeyExchange via relay, app responds with its own.
   Future<void> startPairing(
     String relayUrl,
     String pairingCode, {
@@ -54,17 +58,14 @@ class AuthNotifier extends Notifier<PairingState> {
     await StorageService.setRelayUrl(relayUrl);
     await relay.connect(relayUrl);
 
-    // Always generate X25519 keypair — encryption is mandatory
-    if (daemonPublicKeyB64 == null) {
-      dev.log('ERROR: No daemon public key — encryption is mandatory', name: 'Ferlay');
-      state = PairingState.unpaired;
-      return;
-    }
-
-    final result = await CryptoService.generateKeyPair();
-    final myKeyPair = result.keyPair;
-    final myPublicKeyB64 = base64Encode(result.publicKeyBytes);
+    // Generate keypair (always needed for encryption)
+    final keyResult = await CryptoService.generateKeyPair();
+    final myKeyPair = keyResult.keyPair;
+    final myPublicKeyB64 = base64Encode(keyResult.publicKeyBytes);
     dev.log('Generated keypair, publicKey: $myPublicKeyB64', name: 'Ferlay');
+
+    // Only include public key in pair_with_code if we have the daemon's key (QR path)
+    final includeKeyInPairing = daemonPublicKeyB64 != null;
 
     // Listen for registration + pairing responses
     final completer = Completer<bool>();
@@ -75,11 +76,15 @@ class AuthNotifier extends Notifier<PairingState> {
 
       if (type == 'registered' && !registered) {
         registered = true;
-        dev.log('Registered, sending pair_with_code with publicKey', name: 'Ferlay');
-        // Include our public key in pair_with_code — relay forwards it
-        // to the daemon inside the paired notification
+        dev.log(
+          'Registered, sending pair_with_code (includeKey=$includeKeyInPairing)',
+          name: 'Ferlay',
+        );
         relay.send(
-          ControlMessage.pairWithCode(pairingCode, publicKey: myPublicKeyB64),
+          ControlMessage.pairWithCode(
+            pairingCode,
+            publicKey: includeKeyInPairing ? myPublicKeyB64 : null,
+          ),
         );
       } else if (type == 'paired') {
         final pairedWith = msg['paired_with'] ?? '';
@@ -98,31 +103,73 @@ class AuthNotifier extends Notifier<PairingState> {
 
     await sub.cancel();
 
-    // Derive shared secret after pairing succeeds — encryption is mandatory
-    if (success) {
-      final daemonPkBytes = base64Decode(daemonPublicKeyB64);
-      final crypto = CryptoService();
-      await crypto.deriveKey(
-        myKeyPair: myKeyPair,
-        peerPublicKeyBytes: daemonPkBytes,
-      );
-      relay.setCrypto(crypto);
-      dev.log('E2E encryption keys derived, waiting for verification...', name: 'Ferlay');
-
-      // Wait for encryption verification challenge from daemon
-      final verified = await _waitForEncryptionVerification(relay);
-      if (verified) {
-        dev.log('E2E encryption verified successfully', name: 'Ferlay');
-        state = PairingState.paired;
-      } else {
-        dev.log('E2E encryption verification failed', name: 'Ferlay');
-        await crypto.clearKey();
-        await StorageService.clearPairing();
-        state = PairingState.unpaired;
-      }
-    } else {
+    if (!success) {
       await StorageService.clearPairing();
       state = PairingState.unpaired;
+      return;
+    }
+
+    // Derive encryption key
+    final crypto = CryptoService();
+    String? peerPublicKeyB64 = daemonPublicKeyB64;
+
+    if (peerPublicKeyB64 == null) {
+      // Manual pairing path: wait for daemon's KeyExchange, then send ours
+      dev.log('Manual pairing — waiting for daemon KeyExchange...', name: 'Ferlay');
+      peerPublicKeyB64 = await _waitForKeyExchange(relay);
+      if (peerPublicKeyB64 == null) {
+        dev.log('KeyExchange timed out', name: 'Ferlay');
+        await StorageService.clearPairing();
+        state = PairingState.unpaired;
+        return;
+      }
+      // Send our public key back (unencrypted, via relay)
+      relay.sendRelayUnencrypted(AppMessage.keyExchange(myPublicKeyB64));
+      dev.log('Sent our KeyExchange response', name: 'Ferlay');
+    }
+
+    final peerPkBytes = base64Decode(peerPublicKeyB64);
+    await crypto.deriveKey(
+      myKeyPair: myKeyPair,
+      peerPublicKeyBytes: peerPkBytes,
+    );
+    relay.setCrypto(crypto);
+    dev.log('E2E encryption keys derived, waiting for verification...', name: 'Ferlay');
+
+    // Wait for encryption verification challenge from daemon
+    final verified = await _waitForEncryptionVerification(relay);
+    if (verified) {
+      dev.log('E2E encryption verified successfully', name: 'Ferlay');
+      state = PairingState.paired;
+    } else {
+      dev.log('E2E encryption verification failed', name: 'Ferlay');
+      await crypto.clearKey();
+      await StorageService.clearPairing();
+      state = PairingState.unpaired;
+    }
+  }
+
+  /// Waits for the daemon to send its public key via KeyExchange relay message.
+  /// Returns the base64 public key string, or null on timeout.
+  Future<String?> _waitForKeyExchange(dynamic relay) async {
+    final completer = Completer<String?>();
+
+    final sub = relay.incoming.listen((Map<String, dynamic> msg) {
+      if (msg['type'] == 'key_exchange') {
+        final pk = msg['public_key'] as String?;
+        if (pk != null && !completer.isCompleted) {
+          completer.complete(pk);
+        }
+      }
+    });
+
+    try {
+      return await completer.future.timeout(
+        const Duration(seconds: 30),
+        onTimeout: () => null,
+      );
+    } finally {
+      await sub.cancel();
     }
   }
 
