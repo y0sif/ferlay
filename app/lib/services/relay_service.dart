@@ -26,6 +26,7 @@ class RelayService {
   RelayConnectionState _state = RelayConnectionState.disconnected;
   String? _relayUrl;
   String? _deviceId;
+  String? _pairedDeviceId;
   int _backoff = 1;
   int _reconnectAttempts = 0;
   Timer? _reconnectTimer;
@@ -91,6 +92,7 @@ class RelayService {
   Future<void> connect(String relayUrl) async {
     _relayUrl = relayUrl;
     _deviceId = await StorageService.getDeviceId();
+    _pairedDeviceId = await StorageService.getPairedDeviceId();
     _doConnect();
   }
 
@@ -124,8 +126,11 @@ class RelayService {
         },
       );
 
-      // Register with relay
-      final register = ControlMessage.register(deviceId: _deviceId!);
+      // Register with relay (include paired device ID to restore pairing after relay restart)
+      final register = ControlMessage.register(
+        deviceId: _deviceId!,
+        pairedDeviceId: _pairedDeviceId,
+      );
       _channel!.sink.add(register.toJson());
     } catch (e) {
       _scheduleReconnect();

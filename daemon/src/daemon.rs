@@ -24,10 +24,11 @@ pub async fn run(config: Config, relay_url: String, re_pair: bool) {
         relay::connection_loop(relay_url_clone, outgoing_rx, incoming_tx).await;
     });
 
-    // Register with relay
+    // Register with relay (include paired device ID to restore pairing after relay restart)
     let register = ControlMessage::Register {
         device_id: config.device_id.clone(),
         fcm_token: None,
+        paired_device_id: config.paired_device_id.clone(),
     };
     let _ = outgoing_tx.send(serde_json::to_string(&register).unwrap());
 
@@ -111,6 +112,7 @@ pub async fn run(config: Config, relay_url: String, re_pair: bool) {
             let register = ControlMessage::Register {
                 device_id: config.device_id.clone(),
                 fcm_token: None,
+                paired_device_id: config.paired_device_id.clone(),
             };
             let _ = outgoing_tx.send(serde_json::to_string(&register).unwrap());
 

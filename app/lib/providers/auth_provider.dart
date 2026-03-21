@@ -57,7 +57,6 @@ class AuthNotifier extends Notifier<PairingState> {
 
     final relay = ref.read(relayServiceProvider);
     await StorageService.setRelayUrl(relayUrl);
-    await relay.connect(relayUrl);
 
     // Generate keypair (always needed for encryption)
     final keyResult = await CryptoService.generateKeyPair();
@@ -68,8 +67,8 @@ class AuthNotifier extends Notifier<PairingState> {
     // Only include public key in pair_with_code if we have the daemon's key (QR path)
     final includeKeyInPairing = daemonPublicKeyB64 != null;
 
-    // Single listener handles registration, pairing, AND key exchange.
-    // This avoids broadcast stream race conditions between cancel/re-listen.
+    // Set up listener BEFORE connecting so we don't miss the 'registered' message.
+    // Broadcast streams drop events when no listener is active.
     final completer = Completer<bool>();
     var registered = false;
     String? capturedKeyExchangePk;
@@ -102,6 +101,9 @@ class AuthNotifier extends Notifier<PairingState> {
         dev.log('Captured daemon KeyExchange in pairing listener', name: 'Ferlay');
       }
     });
+
+    // Connect AFTER listener is set up so we don't miss the 'registered' response
+    await relay.connect(relayUrl);
 
     final success = await completer.future.timeout(
       const Duration(seconds: 20),

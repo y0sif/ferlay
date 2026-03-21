@@ -64,6 +64,9 @@ pub async fn run_pairing(
                 tracing::info!(paired_with = %paired_with, has_key = peer_pk_opt.is_some(), "Pairing complete!");
                 println!("\nPaired successfully with device {paired_with}");
 
+                // Persist the paired device ID for relay re-pairing on reconnect
+                crate::config::set_paired_device_id(&paired_with);
+
                 match peer_pk_opt {
                     Some(pk_b64) => {
                         // QR path: peer included their public key

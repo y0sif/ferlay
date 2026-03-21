@@ -17,14 +17,15 @@ class ControlMessage {
   static ControlMessage register({
     required String deviceId,
     String? fcmToken,
+    String? pairedDeviceId,
   }) {
     return ControlMessage(
       type: 'register',
       data: {
         'type': 'register',
         'device_id': deviceId,
-        // ignore: use_null_aware_elements
         if (fcmToken != null) 'fcm_token': fcmToken,
+        if (pairedDeviceId != null) 'paired_device_id': pairedDeviceId,
       },
     );
   }

@@ -15,18 +15,20 @@ pub fn handle_message(
         ControlMessage::Register {
             device_id: id,
             fcm_token,
+            paired_device_id,
         } => {
-            // Preserve existing pairing when a device re-registers
-            // (e.g. app reload or daemon reconnect after network drop)
+            // Determine pairing: prefer existing in-memory pairing, then
+            // fall back to the paired_device_id sent by the client (survives relay restarts).
             let existing_pairing = state
                 .devices
                 .get(id.as_str())
                 .and_then(|d| d.paired_with.clone());
+            let effective_pairing = existing_pairing.or(paired_device_id.clone());
 
-            if existing_pairing.is_some() {
-                tracing::info!(device_id = %id, paired_with = ?existing_pairing, "Device re-registered (pairing preserved)");
+            if effective_pairing.is_some() {
+                tracing::info!(device_id = %id, paired_with = ?effective_pairing, "Device registered (pairing active)");
             } else {
-                tracing::info!(device_id = %id, "Device registered");
+                tracing::info!(device_id = %id, "Device registered (no pairing)");
             }
 
             // Clear disconnect time on reconnect
@@ -36,11 +38,21 @@ pub fn handle_message(
                 id.clone(),
                 DeviceConnection {
                     device_id: id.clone(),
-                    paired_with: existing_pairing,
+                    paired_with: effective_pairing.clone(),
                     fcm_token: fcm_token.clone(),
                     tx: tx.clone(),
                 },
             );
+
+            // If re-establishing pairing from client hint, also update the partner
+            if let Some(ref partner_id) = effective_pairing {
+                if let Some(mut partner) = state.devices.get_mut(partner_id) {
+                    if partner.paired_with.is_none() {
+                        partner.paired_with = Some(id.clone());
+                        tracing::info!(device_id = %partner_id, paired_with = %id, "Partner pairing restored");
+                    }
+                }
+            }
             *device_id = Some(id.clone());
 
             // Send registration confirmation

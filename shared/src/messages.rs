@@ -8,6 +8,10 @@ pub enum ControlMessage {
     Register {
         device_id: String,
         fcm_token: Option<String>,
+        /// If this device was previously paired, include the partner's ID
+        /// so the relay can re-establish the link (survives relay restarts).
+        #[serde(skip_serializing_if = "Option::is_none")]
+        paired_device_id: Option<String>,
     },
 
     #[serde(rename = "registered")]
@@ -55,6 +59,7 @@ mod tests {
         let msg = ControlMessage::Register {
             device_id: "dev-1".to_string(),
             fcm_token: None,
+            paired_device_id: None,
         };
         let json: serde_json::Value = serde_json::to_value(&msg).unwrap();
         assert_eq!(json["type"], "register");

@@ -7,6 +7,9 @@ const DEFAULT_RELAY_URL: &str = "wss://relay.ferlay.dev/ws";
 pub struct Config {
     pub relay_url: String,
     pub device_id: String,
+    /// The paired mobile app's device ID (for re-establishing relay pairing on reconnect).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub paired_device_id: Option<String>,
 }
 
 impl Default for Config {
@@ -14,6 +17,7 @@ impl Default for Config {
         Self {
             relay_url: DEFAULT_RELAY_URL.to_string(),
             device_id: uuid::Uuid::new_v4().to_string(),
+            paired_device_id: None,
         }
     }
 }
@@ -54,6 +58,12 @@ pub fn set_relay_url(url: &str) {
 
 pub fn get_relay_url() -> String {
     load().relay_url
+}
+
+pub fn set_paired_device_id(id: &str) {
+    let mut config = load();
+    config.paired_device_id = Some(id.to_string());
+    save(&config);
 }
 
 pub fn reset() {
