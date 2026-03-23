@@ -1,7 +1,10 @@
 target/
 app/
+daemon/src/
 docs/
 .git/
 .github/
 *.md
 scripts/
+.env
+.env.*
