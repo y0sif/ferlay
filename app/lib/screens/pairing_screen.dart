@@ -174,6 +174,12 @@ class _PairingScreenState extends ConsumerState<PairingScreen> {
   Widget _buildScanner(ThemeData theme) {
     return Column(
       children: [
+        const SizedBox(height: 24),
+        Image.asset(
+          'assets/images/ferlay_logo.png',
+          height: 64,
+        ),
+        const SizedBox(height: 16),
         Expanded(
           child: _processing
               ? Center(
@@ -244,6 +250,13 @@ class _PairingScreenState extends ConsumerState<PairingScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            Center(
+              child: Image.asset(
+                'assets/images/ferlay_logo.png',
+                height: 64,
+              ),
+            ),
+            const SizedBox(height: 16),
             Text('Manual Pairing', style: theme.textTheme.headlineSmall),
             const SizedBox(height: 24),
             TextFormField(
@@ -252,7 +265,7 @@ class _PairingScreenState extends ConsumerState<PairingScreen> {
               autovalidateMode: AutovalidateMode.onUserInteraction,
               decoration: const InputDecoration(
                 labelText: 'Relay URL',
-                hintText: 'wss://relay.ferlay.dev/ws',
+                hintText: 'wss://ferlay.dev/ws',
                 border: OutlineInputBorder(),
               ),
             ),

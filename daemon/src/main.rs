@@ -6,11 +6,12 @@ mod messages;
 mod pairing;
 mod relay;
 mod session;
+mod setup;
 
 use clap::{Parser, Subcommand};
 
 /// Default hosted relay URL. Override with --relay or `ferlay config set relay-url <url>`.
-pub const DEFAULT_RELAY_URL: &str = "wss://relay.ferlay.dev/ws";
+pub const DEFAULT_RELAY_URL: &str = "wss://ferlay.dev/ws";
 
 #[derive(Parser)]
 #[command(name = "ferlay", version, about = "Remote session manager for Claude Code")]
@@ -35,6 +36,12 @@ enum Commands {
         #[arg(long)]
         local: bool,
     },
+
+    /// Interactive setup: configure relay, pair with phone, enable auto-start
+    Setup,
+
+    /// Re-pair with a new phone (stops service, pairs, restarts)
+    Pair,
 
     /// Show daemon status + active sessions
     Status,
@@ -102,6 +109,12 @@ async fn main() {
             };
             tracing::info!(relay = %relay_url, device_id = %cfg.device_id, re_pair = re_pair, "Starting daemon");
             daemon::run(cfg, relay_url, re_pair).await;
+        }
+        Commands::Setup => {
+            setup::run_setup().await;
+        }
+        Commands::Pair => {
+            setup::run_pair().await;
         }
         Commands::Status => {
             // Check health endpoint

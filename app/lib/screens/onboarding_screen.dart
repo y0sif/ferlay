@@ -45,7 +45,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     );
   }
 
-  // ── Pairing logic (same as PairingScreen) ──
+  // --- Pairing logic (identical to PairingScreen) ---
 
   Future<void> _handleQrData(String data) async {
     if (_processing) return;
@@ -76,6 +76,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
       });
       return;
     }
+
     if (code == null) {
       setState(() {
         _error = 'QR code missing pairing code';
@@ -83,6 +84,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
       });
       return;
     }
+
     if (pk == null) {
       setState(() {
         _error = 'QR code missing encryption key -- daemon may be outdated';
@@ -95,7 +97,9 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   }
 
   String? _validateRelayUrl(String? value) {
-    if (value == null || value.trim().isEmpty) return 'Relay URL is required';
+    if (value == null || value.trim().isEmpty) {
+      return 'Relay URL is required';
+    }
     final trimmed = value.trim();
     if (!trimmed.startsWith('ws://') && !trimmed.startsWith('wss://')) {
       return 'URL must start with ws:// or wss://';
@@ -104,8 +108,13 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   }
 
   String? _validatePairingCode(String? value) {
-    if (value == null || value.trim().isEmpty) return 'Pairing code is required';
-    if (value.trim().length != 6) return 'Code must be 6 characters';
+    if (value == null || value.trim().isEmpty) {
+      return 'Pairing code is required';
+    }
+    final trimmed = value.trim();
+    if (trimmed.length != 6) {
+      return 'Code must be 6 characters';
+    }
     return null;
   }
 
@@ -129,12 +138,14 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
 
     Timer(const Duration(seconds: 3), () {
       if (mounted && _processing) {
-        setState(() => _processingMessage = 'Waiting for daemon response...');
+        setState(
+            () => _processingMessage = 'Waiting for daemon response...');
       }
     });
     Timer(const Duration(seconds: 8), () {
       if (mounted && _processing) {
-        setState(() => _processingMessage = 'Establishing encryption...');
+        setState(
+            () => _processingMessage = 'Establishing encryption...');
       }
     });
 
@@ -152,8 +163,8 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Paired successfully!')),
         );
-        Navigator.of(context).pushReplacementNamed('/sessions');
       }
+      Navigator.of(context).pushReplacementNamed('/sessions');
     } else {
       setState(() {
         _error =
@@ -163,240 +174,194 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     }
   }
 
-  // ── Build ──
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
-    return Scaffold(
-      body: SafeArea(
-        child: Column(
-          children: [
-            Expanded(
-              child: PageView(
-                controller: _pageController,
-                onPageChanged: (page) => setState(() => _currentPage = page),
-                physics: _currentPage < 2
-                    ? const ClampingScrollPhysics()
-                    : const NeverScrollableScrollPhysics(),
-                children: [
-                  _buildWelcomePage(theme),
-                  _buildHowItWorksPage(theme),
-                  _buildPairingPage(theme),
-                ],
-              ),
-            ),
-            if (_currentPage < 2) ...[
-              _buildDotIndicator(theme),
-              _buildBottomButton(theme),
-            ] else ...[
-              _buildDotIndicator(theme),
-              const SizedBox(height: 24),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildDotIndicator(ThemeData theme) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 16),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: List.generate(3, (index) {
-          final isActive = index == _currentPage;
-          return Container(
-            width: isActive ? 24 : 8,
-            height: 8,
-            margin: const EdgeInsets.symmetric(horizontal: 4),
-            decoration: BoxDecoration(
-              color: isActive
-                  ? theme.colorScheme.primary
-                  : theme.colorScheme.onSurface.withValues(alpha: 0.3),
-              borderRadius: BorderRadius.circular(4),
-            ),
-          );
-        }),
-      ),
-    );
-  }
-
-  Widget _buildBottomButton(ThemeData theme) {
-    final label = _currentPage == 0 ? 'Get Started' : 'Next';
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
-      child: SizedBox(
-        width: double.infinity,
-        child: FilledButton(
-          onPressed: () => _goToPage(_currentPage + 1),
-          child: Text(label),
-        ),
-      ),
-    );
-  }
-
-  // ── Page 1: Welcome ──
+  // --- Page builders ---
 
   Widget _buildWelcomePage(ThemeData theme) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24),
+      padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(
-            Icons.terminal_rounded,
-            size: 96,
-            color: theme.colorScheme.primary,
+          const Spacer(flex: 2),
+          Image.asset(
+            'assets/images/ferlay_logo.png',
+            height: 96,
           ),
           const SizedBox(height: 24),
           Text(
             'Ferlay',
-            style: theme.textTheme.headlineLarge?.copyWith(
-              fontWeight: FontWeight.bold,
-              color: theme.colorScheme.onSurface,
+            style: theme.textTheme.headlineSmall?.copyWith(
+              color: const Color(0xFFE6E1E5),
             ),
           ),
           const SizedBox(height: 12),
           Text(
             'Your AI agent, always within reach.',
-            style: theme.textTheme.titleMedium?.copyWith(
-              color: theme.colorScheme.primary,
-            ),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 16),
-          Text(
-            'Control Claude Code sessions from your phone\u2009—\u2009anywhere, anytime.',
             style: theme.textTheme.bodyLarge?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
+              color: const Color(0xFFCAC4D0),
             ),
             textAlign: TextAlign.center,
           ),
+          const SizedBox(height: 24),
+          Text(
+            'Control Claude Code sessions from your phone — anywhere, anytime.',
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: const Color(0xFFCAC4D0),
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const Spacer(flex: 3),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton(
+              onPressed: () => _goToPage(1),
+              child: const Text('Get Started'),
+            ),
+          ),
+          const SizedBox(height: 48),
         ],
       ),
     );
   }
-
-  // ── Page 2: How It Works ──
 
   Widget _buildHowItWorksPage(ThemeData theme) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24),
+      padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          // Connection flow diagram
+          const Spacer(flex: 2),
+          Text(
+            'How It Works',
+            style: theme.textTheme.headlineSmall?.copyWith(
+              color: const Color(0xFFE6E1E5),
+            ),
+          ),
+          const SizedBox(height: 24),
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              _buildFlowIcon(theme, Icons.phone_android_rounded, 'Phone'),
+              _buildFlowIcon(Icons.phone_android_rounded, 'Phone', theme),
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 8),
+                padding: const EdgeInsets.symmetric(horizontal: 12),
                 child: Icon(
                   Icons.sync_alt_rounded,
-                  color: theme.colorScheme.primary,
+                  color: const Color(0xFF7C4DFF),
                   size: 28,
                 ),
               ),
-              _buildFlowIcon(theme, Icons.cloud_rounded, 'Relay'),
+              _buildFlowIcon(Icons.cloud_rounded, 'Relay', theme),
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 8),
+                padding: const EdgeInsets.symmetric(horizontal: 12),
                 child: Icon(
                   Icons.sync_alt_rounded,
-                  color: theme.colorScheme.primary,
+                  color: const Color(0xFF7C4DFF),
                   size: 28,
                 ),
               ),
-              _buildFlowIcon(theme, Icons.terminal_rounded, 'Terminal'),
+              _buildFlowIcon(Icons.terminal_rounded, 'Terminal', theme),
             ],
           ),
-          const SizedBox(height: 32),
+          const SizedBox(height: 24),
           Text(
             'Ferlay connects securely to your dev machine through an encrypted relay. Pair once, then start and manage sessions remotely.',
             style: theme.textTheme.bodyLarge?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
+              color: const Color(0xFFCAC4D0),
             ),
             textAlign: TextAlign.center,
           ),
-          const SizedBox(height: 32),
+          const SizedBox(height: 24),
           _buildFeatureRow(
-              theme, Icons.lock_rounded, 'End-to-end encrypted'),
-          const SizedBox(height: 16),
+            Icons.lock_rounded,
+            'End-to-end encrypted',
+            theme,
+          ),
+          const SizedBox(height: 12),
           _buildFeatureRow(
-              theme, Icons.shield_rounded, 'Zero-trust architecture'),
-          const SizedBox(height: 16),
+            Icons.shield_rounded,
+            'Zero-trust architecture',
+            theme,
+          ),
+          const SizedBox(height: 12),
           _buildFeatureRow(
-              theme, Icons.wifi_rounded, 'Session control from anywhere'),
+            Icons.wifi_rounded,
+            'Session control from anywhere',
+            theme,
+          ),
+          const Spacer(flex: 3),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton(
+              onPressed: () => _goToPage(2),
+              child: const Text('Next'),
+            ),
+          ),
+          const SizedBox(height: 48),
         ],
       ),
     );
   }
 
-  Widget _buildFlowIcon(ThemeData theme, IconData icon, String label) {
+  Widget _buildFlowIcon(IconData icon, String label, ThemeData theme) {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Container(
-          width: 56,
-          height: 56,
-          decoration: BoxDecoration(
-            color: theme.colorScheme.primaryContainer.withValues(alpha: 0.3),
-            borderRadius: BorderRadius.circular(16),
-          ),
-          child: Icon(icon, color: theme.colorScheme.primary, size: 28),
+        Icon(
+          icon,
+          size: 36,
+          color: const Color(0xFFE6E1E5),
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 4),
         Text(
           label,
           style: theme.textTheme.labelSmall?.copyWith(
-            color: theme.colorScheme.onSurfaceVariant,
+            color: const Color(0xFFCAC4D0),
           ),
         ),
       ],
     );
   }
 
-  Widget _buildFeatureRow(ThemeData theme, IconData icon, String text) {
+  Widget _buildFeatureRow(IconData icon, String text, ThemeData theme) {
     return Row(
       children: [
-        Icon(icon, color: theme.colorScheme.primary, size: 22),
+        Icon(icon, size: 20, color: const Color(0xFF7C4DFF)),
         const SizedBox(width: 12),
         Text(
           text,
-          style: theme.textTheme.bodyLarge?.copyWith(
-            color: theme.colorScheme.onSurface,
+          style: theme.textTheme.bodyMedium?.copyWith(
+            color: const Color(0xFFE6E1E5),
           ),
         ),
       ],
     );
   }
 
-  // ── Page 3: Pair Your Device ──
-
   Widget _buildPairingPage(ThemeData theme) {
-    if (_showManualInput) return _buildManualInput(theme);
+    return _showManualInput
+        ? _buildManualInput(theme)
+        : _buildScanner(theme);
+  }
 
+  Widget _buildScanner(ThemeData theme) {
     return Column(
       children: [
+        const SizedBox(height: 24),
+        Text(
+          'Pair Your Device',
+          style: theme.textTheme.headlineSmall?.copyWith(
+            color: const Color(0xFFE6E1E5),
+          ),
+        ),
+        const SizedBox(height: 8),
         Padding(
-          padding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
-          child: Column(
-            children: [
-              Text(
-                'Pair Your Device',
-                style: theme.textTheme.headlineSmall,
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'Run  ferlay pair  on your computer, then scan the QR code.',
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
-                textAlign: TextAlign.center,
-              ),
-            ],
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Text(
+            'Run `ferlay pair` on your computer, then scan the QR code.',
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: const Color(0xFFCAC4D0),
+            ),
+            textAlign: TextAlign.center,
           ),
         ),
         const SizedBox(height: 16),
@@ -413,13 +378,16 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                   ),
                 )
               : Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 24),
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
                   child: ClipRRect(
-                    borderRadius: BorderRadius.circular(16),
+                    borderRadius: BorderRadius.circular(12),
                     child: MobileScanner(
                       onDetect: (BarcodeCapture capture) {
-                        final value = capture.barcodes.firstOrNull?.rawValue;
-                        if (value != null) _handleQrData(value);
+                        final value =
+                            capture.barcodes.firstOrNull?.rawValue;
+                        if (value != null) {
+                          _handleQrData(value);
+                        }
                       },
                     ),
                   ),
@@ -446,7 +414,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
             ),
           ),
         Padding(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+          padding: const EdgeInsets.all(16),
           child: TextButton(
             onPressed: () => setState(() => _showManualInput = true),
             child: const Text('Enter code manually'),
@@ -464,12 +432,17 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text('Pair Your Device', style: theme.textTheme.headlineSmall),
+            Text(
+              'Pair Your Device',
+              style: theme.textTheme.headlineSmall?.copyWith(
+                color: const Color(0xFFE6E1E5),
+              ),
+            ),
             const SizedBox(height: 8),
             Text(
-              'Enter the relay URL and pairing code from your terminal.',
+              'Run `ferlay pair` on your computer and enter the details below.',
               style: theme.textTheme.bodyMedium?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
+                color: const Color(0xFFCAC4D0),
               ),
             ),
             const SizedBox(height: 24),
@@ -479,7 +452,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
               autovalidateMode: AutovalidateMode.onUserInteraction,
               decoration: const InputDecoration(
                 labelText: 'Relay URL',
-                hintText: 'wss://relay.ferlay.dev/ws',
+                hintText: 'wss://ferlay.dev/ws',
                 border: OutlineInputBorder(),
               ),
             ),
@@ -515,6 +488,58 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
             TextButton(
               onPressed: () => setState(() => _showManualInput = false),
               child: const Text('Scan QR code instead'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDotIndicator() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: List.generate(3, (index) {
+        final isActive = index == _currentPage;
+        return Container(
+          width: isActive ? 10 : 8,
+          height: isActive ? 10 : 8,
+          margin: const EdgeInsets.symmetric(horizontal: 4),
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: isActive
+                ? const Color(0xFF7C4DFF)
+                : const Color(0xFFCAC4D0).withValues(alpha: 0.3),
+          ),
+        );
+      }),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Scaffold(
+      backgroundColor: const Color(0xFF1C1B1F),
+      body: SafeArea(
+        child: Column(
+          children: [
+            Expanded(
+              child: PageView(
+                controller: _pageController,
+                onPageChanged: (page) {
+                  setState(() => _currentPage = page);
+                },
+                children: [
+                  _buildWelcomePage(theme),
+                  _buildHowItWorksPage(theme),
+                  _buildPairingPage(theme),
+                ],
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.only(bottom: 16),
+              child: _buildDotIndicator(),
             ),
           ],
         ),

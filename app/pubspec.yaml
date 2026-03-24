@@ -36,6 +36,27 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^6.0.0
+  flutter_launcher_icons: ^0.14.3
+  flutter_native_splash: ^2.4.6
+
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "assets/images/ferlay_logo.png"
+  adaptive_icon_background: "#7C4DFF"
+  adaptive_icon_foreground: "assets/images/ferlay_logo.png"
+  remove_alpha_ios: true
+
+flutter_native_splash:
+  color: "#1C1B1F"
+  image: "assets/images/ferlay_splash.png"
+  image_dark: "assets/images/ferlay_splash.png"
+  color_dark: "#1C1B1F"
+  android_12:
+    color: "#1C1B1F"
+    image: "assets/images/ferlay_splash.png"
 
 flutter:
   uses-material-design: true
+  assets:
+    - assets/images/ferlay_logo.png

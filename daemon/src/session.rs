@@ -38,6 +38,8 @@ struct Session {
     status: SessionStatus,
     url: Option<String>,
     child: Option<Child>,
+    permission_mode: Option<String>,
+    worktree: bool,
 }
 
 pub struct SessionManager {
@@ -58,7 +60,13 @@ impl SessionManager {
         }
     }
 
-    pub async fn start(&mut self, directory: String, name: String) {
+    pub async fn start(
+        &mut self,
+        directory: String,
+        name: String,
+        permission_mode: Option<String>,
+        worktree: bool,
+    ) {
         let session_id = uuid::Uuid::new_v4().to_string();
         tracing::info!(session_id = %session_id, name = %name, dir = %directory, "Starting session");
 
@@ -98,8 +106,32 @@ impl SessionManager {
             }
         }
 
+        // Build CLI args dynamically based on session options
+        let spawn_mode = if worktree { "worktree" } else { "same-dir" };
+        let mut args = vec![
+            "remote-control".to_string(),
+            "--name".to_string(),
+            name.clone(),
+            "--verbose".to_string(),
+            format!("--spawn={spawn_mode}"),
+        ];
+
+        // Permission mode (values must match claude CLI exactly)
+        if let Some(ref mode) = permission_mode {
+            match mode.as_str() {
+                "default" | "" => {}
+                valid @ ("acceptEdits" | "bypassPermissions" | "plan" | "dontAsk") => {
+                    args.push("--permission-mode".to_string());
+                    args.push(valid.to_string());
+                }
+                unknown => {
+                    tracing::warn!(mode = %unknown, "Unknown permission mode, ignoring");
+                }
+            }
+        }
+
         let child_result = Command::new("claude")
-            .args(["remote-control", "--name", &name, "--verbose", "--spawn=same-dir"])
+            .args(&args)
             .current_dir(&expanded_dir)
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
@@ -122,6 +154,8 @@ impl SessionManager {
             status: SessionStatus::Starting,
             url: None,
             child: None,
+            permission_mode: permission_mode.clone(),
+            worktree,
         };
         self.sessions.insert(session_id.clone(), session);
         self.send_status(&session_id, "starting", None);
@@ -181,6 +215,8 @@ impl SessionManager {
                 directory: s.directory.clone(),
                 status: s.status.as_str().to_string(),
                 url: s.url.clone(),
+                permission_mode: s.permission_mode.clone(),
+                worktree: s.worktree,
             })
             .collect()
     }

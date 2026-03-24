@@ -27,6 +27,9 @@ class _NewSessionScreenState extends ConsumerState<NewSessionScreen> {
   Timer? _progressTimer;
   Timer? _timeoutTimer;
 
+  PermissionMode _permissionMode = PermissionMode.defaultMode;
+  bool _useWorktree = false;
+
   @override
   void dispose() {
     _directoryController.dispose();
@@ -48,7 +51,7 @@ class _NewSessionScreenState extends ConsumerState<NewSessionScreen> {
     return null;
   }
 
-  void _startSession() {
+  Future<void> _startSession() async {
     if (!_formKey.currentState!.validate()) return;
 
     final directory = _directoryController.text.trim();
@@ -64,6 +67,31 @@ class _NewSessionScreenState extends ConsumerState<NewSessionScreen> {
       return;
     }
 
+    // Confirm bypass permissions
+    if (_permissionMode == PermissionMode.bypassPermissions) {
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('Bypass Permissions?'),
+          content: const Text(
+            'This allows Claude to modify files and run commands without asking for confirmation. '
+            'Only use this in disposable or version-controlled environments.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('Proceed'),
+            ),
+          ],
+        ),
+      );
+      if (confirmed != true) return;
+    }
+
     setState(() {
       _loading = true;
       _loadingMessage = 'Sending to daemon...';
@@ -73,6 +101,10 @@ class _NewSessionScreenState extends ConsumerState<NewSessionScreen> {
     ref.read(sessionsProvider.notifier).startSession(
           directory: directory,
           name: name.isNotEmpty ? name : 'session',
+          permissionMode: _permissionMode == PermissionMode.defaultMode
+              ? null
+              : _permissionMode.value,
+          worktree: _useWorktree,
         );
 
     // Progressive loading messages
@@ -219,6 +251,58 @@ class _NewSessionScreenState extends ConsumerState<NewSessionScreen> {
                   border: OutlineInputBorder(),
                 ),
               ),
+              const SizedBox(height: 24),
+
+              // Session options section
+              Text('Session Options',
+                  style: Theme.of(context).textTheme.titleSmall),
+              const SizedBox(height: 12),
+
+              // Permission mode dropdown
+              DropdownButtonFormField<PermissionMode>(
+                initialValue: _permissionMode,
+                decoration: const InputDecoration(
+                  labelText: 'Permission Mode',
+                  prefixIcon: Icon(Icons.shield_outlined),
+                  border: OutlineInputBorder(),
+                ),
+                items: PermissionMode.values
+                    .map((mode) => DropdownMenuItem(
+                          value: mode,
+                          child: Text(mode.label),
+                        ))
+                    .toList(),
+                onChanged: _loading
+                    ? null
+                    : (value) {
+                        if (value != null) {
+                          setState(() => _permissionMode = value);
+                        }
+                      },
+              ),
+              if (_permissionMode == PermissionMode.bypassPermissions) ...[
+                const SizedBox(height: 4),
+                Text(
+                  'Claude can modify files and run commands without confirmation.',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Theme.of(context).colorScheme.error,
+                      ),
+                ),
+              ],
+              const SizedBox(height: 16),
+
+              // Worktree toggle
+              SwitchListTile(
+                title: const Text('Use Worktree'),
+                subtitle: const Text('Isolate each session in a new git worktree'),
+                secondary: const Icon(Icons.account_tree_outlined),
+                value: _useWorktree,
+                contentPadding: EdgeInsets.zero,
+                onChanged: _loading
+                    ? null
+                    : (value) => setState(() => _useWorktree = value),
+              ),
+
               const SizedBox(height: 24),
               FilledButton.icon(
                 onPressed: canStart ? _startSession : null,

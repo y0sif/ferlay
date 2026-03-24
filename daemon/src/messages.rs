@@ -6,7 +6,15 @@ use serde::{Deserialize, Serialize};
 #[serde(tag = "type")]
 pub enum AppMessage {
     #[serde(rename = "start_session")]
-    StartSession { directory: String, name: String },
+    StartSession {
+        directory: String,
+        name: String,
+        #[serde(default)]
+        #[serde(skip_serializing_if = "Option::is_none")]
+        permission_mode: Option<String>,
+        #[serde(default)]
+        worktree: bool,
+    },
 
     #[serde(rename = "session_ready")]
     SessionReady {
@@ -56,6 +64,10 @@ pub struct SessionInfo {
     pub status: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub url: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub permission_mode: Option<String>,
+    #[serde(default)]
+    pub worktree: bool,
 }
 
 #[cfg(test)]
@@ -67,11 +79,28 @@ mod tests {
         let msg = AppMessage::StartSession {
             directory: "~/Projects".to_string(),
             name: "test".to_string(),
+            permission_mode: None,
+            worktree: false,
         };
         let json: serde_json::Value = serde_json::to_value(&msg).unwrap();
         assert_eq!(json["type"], "start_session");
         assert_eq!(json["directory"], "~/Projects");
         assert_eq!(json["name"], "test");
+        assert!(json.get("permission_mode").is_none());
+        assert_eq!(json["worktree"], false);
+    }
+
+    #[test]
+    fn start_session_with_options_serialization() {
+        let msg = AppMessage::StartSession {
+            directory: "~/Projects".to_string(),
+            name: "test".to_string(),
+            permission_mode: Some("bypassPermissions".to_string()),
+            worktree: true,
+        };
+        let json: serde_json::Value = serde_json::to_value(&msg).unwrap();
+        assert_eq!(json["permission_mode"], "bypassPermissions");
+        assert_eq!(json["worktree"], true);
     }
 
     #[test]
@@ -124,9 +153,24 @@ mod tests {
         let json = r#"{"type":"start_session","directory":"/tmp","name":"foo"}"#;
         let msg: AppMessage = serde_json::from_str(json).unwrap();
         match msg {
-            AppMessage::StartSession { directory, name } => {
+            AppMessage::StartSession { directory, name, permission_mode, worktree } => {
                 assert_eq!(directory, "/tmp");
                 assert_eq!(name, "foo");
+                assert!(permission_mode.is_none());
+                assert!(!worktree);
+            }
+            _ => panic!("wrong variant"),
+        }
+    }
+
+    #[test]
+    fn deserialize_start_session_with_options() {
+        let json = r#"{"type":"start_session","directory":"/tmp","name":"foo","permission_mode":"plan","worktree":true}"#;
+        let msg: AppMessage = serde_json::from_str(json).unwrap();
+        match msg {
+            AppMessage::StartSession { permission_mode, worktree, .. } => {
+                assert_eq!(permission_mode.as_deref(), Some("plan"));
+                assert!(worktree);
             }
             _ => panic!("wrong variant"),
         }
@@ -157,6 +201,8 @@ mod tests {
             directory: "/tmp".to_string(),
             status: "starting".to_string(),
             url: None,
+            permission_mode: None,
+            worktree: false,
         };
         let json_str = serde_json::to_string(&info).unwrap();
         assert!(!json_str.contains("url"));
@@ -170,6 +216,8 @@ mod tests {
             directory: "/tmp".to_string(),
             status: "ready".to_string(),
             url: Some("https://example.com".to_string()),
+            permission_mode: None,
+            worktree: false,
         };
         let json: serde_json::Value = serde_json::to_value(&info).unwrap();
         assert_eq!(json["url"], "https://example.com");
@@ -184,10 +232,14 @@ mod tests {
                 directory: "/tmp".to_string(),
                 status: "ready".to_string(),
                 url: Some("https://example.com".to_string()),
+                permission_mode: Some("plan".to_string()),
+                worktree: true,
             }],
         };
         let json: serde_json::Value = serde_json::to_value(&msg).unwrap();
         assert_eq!(json["type"], "sessions_list");
         assert_eq!(json["sessions"][0]["id"], "s1");
+        assert_eq!(json["sessions"][0]["permission_mode"], "plan");
+        assert_eq!(json["sessions"][0]["worktree"], true);
     }
 }

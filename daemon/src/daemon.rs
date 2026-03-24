@@ -195,7 +195,7 @@ pub async fn run(config: Config, relay_url: String, re_pair: bool) {
 
 /// Sends an encrypted challenge and waits for the app to echo it back.
 /// This verifies both sides derived the same AES key.
-async fn verify_encryption(
+pub async fn verify_encryption(
     crypto: &CryptoState,
     outgoing_tx: &mpsc::UnboundedSender<String>,
     incoming_rx: &mut mpsc::UnboundedReceiver<String>,
@@ -267,8 +267,8 @@ async fn handle_app_message(
     health_sessions: &std::sync::Arc<tokio::sync::Mutex<Vec<crate::messages::SessionInfo>>>,
 ) {
     match msg {
-        AppMessage::StartSession { directory, name } => {
-            session_manager.start(directory, name).await;
+        AppMessage::StartSession { directory, name, permission_mode, worktree } => {
+            session_manager.start(directory, name, permission_mode, worktree).await;
         }
         AppMessage::StopSession { session_id } => {
             session_manager.stop(&session_id).await;
