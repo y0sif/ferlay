@@ -24,13 +24,22 @@ class FerlayApp extends ConsumerWidget {
     final authState = ref.watch(authProvider);
     final onboardingAsync = ref.watch(onboardingCompleteProvider);
 
-    final onboardingComplete = onboardingAsync.whenOrNull(data: (v) => v) ?? false;
+    final onboardingComplete =
+        onboardingAsync.whenOrNull(data: (v) => v) ?? false;
 
-    final initialRoute = switch (authState) {
-      PairingState.paired => '/sessions',
-      PairingState.unknown => '/sessions', // will redirect if needed
-      _ => onboardingComplete ? '/pairing' : '/onboarding',
-    };
+    final Widget home;
+    if (authState == PairingState.unknown) {
+      home = const Scaffold(
+        backgroundColor: Color(0xFF1C1B1F),
+        body: Center(child: CircularProgressIndicator()),
+      );
+    } else if (authState == PairingState.paired) {
+      home = const SessionsScreen();
+    } else if (onboardingComplete) {
+      home = const PairingScreen();
+    } else {
+      home = const OnboardingScreen();
+    }
 
     return MaterialApp(
       title: 'Ferlay',
@@ -40,7 +49,7 @@ class FerlayApp extends ConsumerWidget {
         brightness: Brightness.dark,
         useMaterial3: true,
       ),
-      initialRoute: initialRoute,
+      home: home,
       routes: {
         '/onboarding': (context) => const OnboardingScreen(),
         '/pairing': (context) => const PairingScreen(),
