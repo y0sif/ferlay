@@ -21,7 +21,6 @@ class _NewSessionScreenState extends ConsumerState<NewSessionScreen> {
   final _formKey = GlobalKey<FormState>();
   final _directoryController = TextEditingController(text: '~/Projects/');
   final _nameController = TextEditingController();
-  final _worktreeBranchController = TextEditingController();
   bool _loading = false;
   String _loadingMessage = '';
   StreamSubscription<RelayConnectionState>? _disconnectSub;
@@ -29,14 +28,12 @@ class _NewSessionScreenState extends ConsumerState<NewSessionScreen> {
   Timer? _timeoutTimer;
 
   PermissionMode _permissionMode = PermissionMode.defaultMode;
-  ModelOption _model = ModelOption.defaultModel;
   bool _useWorktree = false;
 
   @override
   void dispose() {
     _directoryController.dispose();
     _nameController.dispose();
-    _worktreeBranchController.dispose();
     _disconnectSub?.cancel();
     _progressTimer?.cancel();
     _timeoutTimer?.cancel();
@@ -71,7 +68,7 @@ class _NewSessionScreenState extends ConsumerState<NewSessionScreen> {
     }
 
     // Confirm bypass permissions
-    if (_permissionMode == PermissionMode.bypass) {
+    if (_permissionMode == PermissionMode.bypassPermissions) {
       final confirmed = await showDialog<bool>(
         context: context,
         builder: (ctx) => AlertDialog(
@@ -107,10 +104,7 @@ class _NewSessionScreenState extends ConsumerState<NewSessionScreen> {
           permissionMode: _permissionMode == PermissionMode.defaultMode
               ? null
               : _permissionMode.value,
-          worktree: _useWorktree
-              ? _worktreeBranchController.text.trim()
-              : null,
-          model: _model == ModelOption.defaultModel ? null : _model.value,
+          worktree: _useWorktree,
         );
 
     // Progressive loading messages
@@ -286,7 +280,7 @@ class _NewSessionScreenState extends ConsumerState<NewSessionScreen> {
                         }
                       },
               ),
-              if (_permissionMode == PermissionMode.bypass) ...[
+              if (_permissionMode == PermissionMode.bypassPermissions) ...[
                 const SizedBox(height: 4),
                 Text(
                   'Claude can modify files and run commands without confirmation.',
@@ -297,34 +291,10 @@ class _NewSessionScreenState extends ConsumerState<NewSessionScreen> {
               ],
               const SizedBox(height: 16),
 
-              // Model dropdown
-              DropdownButtonFormField<ModelOption>(
-                initialValue: _model,
-                decoration: const InputDecoration(
-                  labelText: 'Model',
-                  prefixIcon: Icon(Icons.smart_toy_outlined),
-                  border: OutlineInputBorder(),
-                ),
-                items: ModelOption.values
-                    .map((model) => DropdownMenuItem(
-                          value: model,
-                          child: Text(model.label),
-                        ))
-                    .toList(),
-                onChanged: _loading
-                    ? null
-                    : (value) {
-                        if (value != null) {
-                          setState(() => _model = value);
-                        }
-                      },
-              ),
-              const SizedBox(height: 16),
-
               // Worktree toggle
               SwitchListTile(
                 title: const Text('Use Worktree'),
-                subtitle: const Text('Isolate session in a new git worktree'),
+                subtitle: const Text('Isolate each session in a new git worktree'),
                 secondary: const Icon(Icons.account_tree_outlined),
                 value: _useWorktree,
                 contentPadding: EdgeInsets.zero,
@@ -332,19 +302,6 @@ class _NewSessionScreenState extends ConsumerState<NewSessionScreen> {
                     ? null
                     : (value) => setState(() => _useWorktree = value),
               ),
-              if (_useWorktree) ...[
-                const SizedBox(height: 8),
-                TextFormField(
-                  controller: _worktreeBranchController,
-                  enabled: !_loading,
-                  decoration: const InputDecoration(
-                    labelText: 'Branch Name',
-                    hintText: 'Auto-generated if empty',
-                    prefixIcon: Icon(Icons.merge_type),
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-              ],
 
               const SizedBox(height: 24),
               FilledButton.icon(

@@ -39,7 +39,7 @@ struct Session {
     url: Option<String>,
     child: Option<Child>,
     permission_mode: Option<String>,
-    model: Option<String>,
+    worktree: bool,
 }
 
 pub struct SessionManager {
@@ -65,8 +65,7 @@ impl SessionManager {
         directory: String,
         name: String,
         permission_mode: Option<String>,
-        worktree: Option<String>,
-        model: Option<String>,
+        worktree: bool,
     ) {
         let session_id = uuid::Uuid::new_v4().to_string();
         tracing::info!(session_id = %session_id, name = %name, dir = %directory, "Starting session");
@@ -108,41 +107,26 @@ impl SessionManager {
         }
 
         // Build CLI args dynamically based on session options
+        let spawn_mode = if worktree { "worktree" } else { "same-dir" };
         let mut args = vec![
             "remote-control".to_string(),
             "--name".to_string(),
             name.clone(),
             "--verbose".to_string(),
-            "--spawn=same-dir".to_string(),
+            format!("--spawn={spawn_mode}"),
         ];
 
-        // Permission mode
+        // Permission mode (values must match claude CLI exactly)
         if let Some(ref mode) = permission_mode {
             match mode.as_str() {
-                "bypass" => {
-                    args.push("--dangerously-skip-permissions".to_string());
-                }
                 "default" | "" => {}
-                other => {
+                valid @ ("acceptEdits" | "bypassPermissions" | "plan" | "dontAsk") => {
                     args.push("--permission-mode".to_string());
-                    args.push(other.to_string());
+                    args.push(valid.to_string());
                 }
-            }
-        }
-
-        // Worktree
-        if let Some(ref branch) = worktree {
-            args.push("--worktree".to_string());
-            if !branch.is_empty() {
-                args.push(branch.clone());
-            }
-        }
-
-        // Model
-        if let Some(ref m) = model {
-            if !m.is_empty() && m != "default" {
-                args.push("--model".to_string());
-                args.push(m.clone());
+                unknown => {
+                    tracing::warn!(mode = %unknown, "Unknown permission mode, ignoring");
+                }
             }
         }
 
@@ -171,7 +155,7 @@ impl SessionManager {
             url: None,
             child: None,
             permission_mode: permission_mode.clone(),
-            model: model.clone(),
+            worktree,
         };
         self.sessions.insert(session_id.clone(), session);
         self.send_status(&session_id, "starting", None);
@@ -232,7 +216,7 @@ impl SessionManager {
                 status: s.status.as_str().to_string(),
                 url: s.url.clone(),
                 permission_mode: s.permission_mode.clone(),
-                model: s.model.clone(),
+                worktree: s.worktree,
             })
             .collect()
     }

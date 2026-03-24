@@ -65,8 +65,7 @@ class AppMessage {
     required String directory,
     required String name,
     String? permissionMode,
-    String? worktree,
-    String? model,
+    bool worktree = false,
   }) {
     return {
       'type': 'start_session',
@@ -74,8 +73,7 @@ class AppMessage {
       'name': name,
       if (permissionMode != null && permissionMode != 'default')
         'permission_mode': permissionMode,
-      if (worktree != null) 'worktree': worktree,
-      if (model != null && model != 'default') 'model': model,
+      if (worktree) 'worktree': true,
     };
   }
 

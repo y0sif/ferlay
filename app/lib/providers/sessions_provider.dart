@@ -42,7 +42,7 @@ class SessionsNotifier extends Notifier<List<Session>> {
       if (s.url != null) 'url': s.url,
       if (s.error != null) 'error': s.error,
       if (s.permissionMode != null) 'permission_mode': s.permissionMode,
-      if (s.model != null) 'model': s.model,
+      if (s.worktree) 'worktree': true,
     }).toList());
     StorageService.setSessions(json);
   }
@@ -118,15 +118,13 @@ class SessionsNotifier extends Notifier<List<Session>> {
     required String directory,
     required String name,
     String? permissionMode,
-    String? worktree,
-    String? model,
+    bool worktree = false,
   }) {
     ref.read(relayServiceProvider).sendRelay(AppMessage.startSession(
           directory: directory,
           name: name,
           permissionMode: permissionMode,
           worktree: worktree,
-          model: model,
         ));
   }
 
