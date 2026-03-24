@@ -3,10 +3,18 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'providers/auth_provider.dart';
 import 'screens/new_session_screen.dart';
+import 'screens/onboarding_screen.dart';
 import 'screens/pairing_screen.dart';
 import 'screens/session_detail_screen.dart';
 import 'screens/sessions_screen.dart';
 import 'screens/settings_screen.dart';
+import 'services/storage_service.dart';
+
+/// Tracks whether onboarding has been completed.
+/// Loaded once at startup, then stays in memory.
+final onboardingCompleteProvider = FutureProvider<bool>((ref) async {
+  return StorageService.isOnboardingComplete();
+});
 
 class FerlayApp extends ConsumerWidget {
   const FerlayApp({super.key});
@@ -14,11 +22,14 @@ class FerlayApp extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final authState = ref.watch(authProvider);
+    final onboardingAsync = ref.watch(onboardingCompleteProvider);
+
+    final onboardingComplete = onboardingAsync.whenOrNull(data: (v) => v) ?? false;
 
     final initialRoute = switch (authState) {
       PairingState.paired => '/sessions',
       PairingState.unknown => '/sessions', // will redirect if needed
-      _ => '/pairing',
+      _ => onboardingComplete ? '/pairing' : '/onboarding',
     };
 
     return MaterialApp(
@@ -31,6 +42,7 @@ class FerlayApp extends ConsumerWidget {
       ),
       initialRoute: initialRoute,
       routes: {
+        '/onboarding': (context) => const OnboardingScreen(),
         '/pairing': (context) => const PairingScreen(),
         '/sessions': (context) => const SessionsScreen(),
         '/sessions/new': (context) => const NewSessionScreen(),

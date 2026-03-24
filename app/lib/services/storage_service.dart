@@ -10,6 +10,7 @@ class StorageService {
   static const _keyDeviceId = 'device_id';
   static const _keyPairedDeviceId = 'paired_device_id';
   static const _keyEncryptionKey = 'encryption_key';
+  static const _keyOnboardingComplete = 'onboarding_complete';
 
   static Future<String?> getRelayUrl() => _storage.read(key: _keyRelayUrl);
   static Future<void> setRelayUrl(String url) =>
@@ -28,6 +29,14 @@ class StorageService {
       _storage.read(key: _keyPairedDeviceId);
   static Future<void> setPairedDeviceId(String id) =>
       _storage.write(key: _keyPairedDeviceId, value: id);
+
+  static Future<bool> isOnboardingComplete() async {
+    final value = await _storage.read(key: _keyOnboardingComplete);
+    return value == 'true';
+  }
+
+  static Future<void> setOnboardingComplete(bool complete) =>
+      _storage.write(key: _keyOnboardingComplete, value: complete.toString());
 
   static Future<bool> isPaired() async {
     final relayUrl = await getRelayUrl();
