@@ -162,6 +162,7 @@ class AuthNotifier extends Notifier<PairingState> {
     if (verified) {
       dev.log('E2E encryption verified successfully', name: 'Ferlay');
       relay.markEncryptionEstablished();
+      await StorageService.setOnboardingComplete(true);
       state = PairingState.paired;
     } else {
       dev.log('E2E encryption verification failed', name: 'Ferlay');

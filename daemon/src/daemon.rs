@@ -195,7 +195,7 @@ pub async fn run(config: Config, relay_url: String, re_pair: bool) {
 
 /// Sends an encrypted challenge and waits for the app to echo it back.
 /// This verifies both sides derived the same AES key.
-async fn verify_encryption(
+pub async fn verify_encryption(
     crypto: &CryptoState,
     outgoing_tx: &mpsc::UnboundedSender<String>,
     incoming_rx: &mut mpsc::UnboundedReceiver<String>,

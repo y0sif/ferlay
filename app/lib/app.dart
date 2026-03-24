@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'providers/auth_provider.dart';
 import 'screens/new_session_screen.dart';
+import 'screens/onboarding_screen.dart';
 import 'screens/pairing_screen.dart';
 import 'screens/session_detail_screen.dart';
 import 'screens/sessions_screen.dart';
@@ -18,7 +19,7 @@ class FerlayApp extends ConsumerWidget {
     final initialRoute = switch (authState) {
       PairingState.paired => '/sessions',
       PairingState.unknown => '/sessions', // will redirect if needed
-      _ => '/pairing',
+      _ => '/onboarding',
     };
 
     return MaterialApp(
@@ -31,6 +32,7 @@ class FerlayApp extends ConsumerWidget {
       ),
       initialRoute: initialRoute,
       routes: {
+        '/onboarding': (context) => const OnboardingScreen(),
         '/pairing': (context) => const PairingScreen(),
         '/sessions': (context) => const SessionsScreen(),
         '/sessions/new': (context) => const NewSessionScreen(),

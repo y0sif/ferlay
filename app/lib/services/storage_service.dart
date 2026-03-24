@@ -56,6 +56,16 @@ class StorageService {
   static Future<void> clearEncryptionKey() =>
       _storage.delete(key: _keyEncryptionKey);
 
+  static const _keyOnboardingComplete = 'onboarding_complete';
+
+  static Future<bool> isOnboardingComplete() async {
+    final value = await _storage.read(key: _keyOnboardingComplete);
+    return value == 'true';
+  }
+
+  static Future<void> setOnboardingComplete(bool complete) =>
+      _storage.write(key: _keyOnboardingComplete, value: complete.toString());
+
   static const _keySessions = 'sessions_cache';
 
   /// Persists the sessions list as JSON for offline access.
