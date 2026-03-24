@@ -6,6 +6,7 @@ on:
     paths:
       - 'site/**'
       - 'assets/**'
+      - 'scripts/**'
   workflow_dispatch:
 
 permissions:
@@ -17,8 +18,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Copy logo to site
-        run: cp assets/ferlay_logo.png site/logo.png
+      - name: Prepare site
+        run: |
+          cp assets/ferlay_logo.png site/logo.png
+          cp scripts/install.sh site/install.sh
+          cp scripts/install.ps1 site/install.ps1
 
       - name: Deploy to gh-pages branch
         uses: peaceiris/actions-gh-pages@v4

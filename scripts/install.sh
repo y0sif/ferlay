@@ -2,7 +2,7 @@
 set -e
 
 # Ferlay Daemon Installer
-# Usage: curl -sSL https://raw.githubusercontent.com/y0sif/ferlay/main/scripts/install.sh | sh
+# Usage: curl -sSL https://ferlay.dev/install.sh | sh
 
 REPO="y0sif/ferlay"
 BINARY_NAME="ferlay"
@@ -20,8 +20,8 @@ case "$OS" in
   darwin) PLATFORM="macos" ;;
   *)
     echo "Error: Unsupported OS: $OS"
-    echo "  Windows users: use the PowerShell installer or WSL."
-    echo "  See: https://github.com/$REPO#install"
+    echo "  Windows users: use the PowerShell installer."
+    echo "  See: https://github.com/$REPO#installation"
     exit 1
     ;;
 esac
@@ -94,46 +94,24 @@ case ":$PATH:" in
     echo "    bash/zsh:  echo 'export PATH=\"\$HOME/.local/bin:\$PATH\"' >> ~/.bashrc"
     echo "    fish:      fish_add_path ~/.local/bin"
     echo ""
+    # Add to PATH for the rest of this script
+    export PATH="$INSTALL_DIR:$PATH"
     ;;
 esac
-
-# --- Optional: background service setup ---
-if [ "$PLATFORM" = "linux" ] && command -v systemctl >/dev/null 2>&1; then
-  SYSTEMD_DIR="$HOME/.config/systemd/user"
-  SERVICE_FILE="$SYSTEMD_DIR/ferlay.service"
-
-  if [ ! -f "$SERVICE_FILE" ]; then
-    echo ""
-    echo "  Tip: Run as a systemd user service for auto-start:"
-    echo ""
-    echo "    mkdir -p $SYSTEMD_DIR"
-    echo "    curl -sSL https://raw.githubusercontent.com/$REPO/main/deploy/ferlay-daemon.service > $SERVICE_FILE"
-    echo "    systemctl --user daemon-reload"
-    echo "    systemctl --user enable --now ferlay"
-    echo ""
-  fi
-elif [ "$PLATFORM" = "macos" ]; then
-  PLIST_FILE="$HOME/Library/LaunchAgents/dev.ferlay.daemon.plist"
-
-  if [ ! -f "$PLIST_FILE" ]; then
-    echo ""
-    echo "  Tip: Run as a launchd service for auto-start:"
-    echo ""
-    echo "    sudo ln -sf $INSTALL_DIR/ferlay /usr/local/bin/ferlay"
-    echo "    curl -sSL https://raw.githubusercontent.com/$REPO/main/deploy/dev.ferlay.daemon.plist > $PLIST_FILE"
-    echo "    launchctl load $PLIST_FILE"
-    echo ""
-  fi
-fi
 
 echo ""
 echo "  Ferlay installed successfully!"
 echo ""
-echo "  Next steps:"
-echo "    1. Run:  ferlay daemon"
-echo "    2. Scan the QR code with the Ferlay app"
-echo "    3. Start sessions from your phone!"
-echo ""
-echo "  Get the app:"
-echo "    Android APK: https://github.com/$REPO/releases/latest"
-echo ""
+
+# --- Run interactive setup (relay config, pairing, background service) ---
+if [ -t 0 ] || [ -e /dev/tty ]; then
+  echo "  Running setup..."
+  echo ""
+  "$INSTALL_DIR/$BINARY_NAME" setup < /dev/tty
+else
+  echo "  Next steps:"
+  echo "    Run: ferlay setup"
+  echo ""
+  echo "  This will configure the relay, pair with your phone,"
+  echo "  and start the daemon as a background service."
+fi

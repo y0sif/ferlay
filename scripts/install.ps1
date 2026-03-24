@@ -1,6 +1,5 @@
 # Ferlay Daemon Installer for Windows
-# Usage: irm https://raw.githubusercontent.com/y0sif/ferlay/main/scripts/install.ps1 | iex
-#   or:  powershell -ExecutionPolicy Bypass -File install.ps1
+# Usage: irm https://ferlay.dev/install.ps1 | iex
 
 $ErrorActionPreference = "Stop"
 
@@ -69,8 +68,8 @@ Write-Host "  Installed to: $InstallDir\$BinaryName"
 $UserPath = [Environment]::GetEnvironmentVariable("PATH", "User")
 if ($UserPath -notlike "*$InstallDir*") {
     [Environment]::SetEnvironmentVariable("PATH", "$InstallDir;$UserPath", "User")
+    $env:PATH = "$InstallDir;$env:PATH"
     Write-Host "  Added $InstallDir to user PATH."
-    Write-Host "  Restart your terminal for PATH changes to take effect."
 }
 
 # --- Cleanup ---
@@ -79,12 +78,8 @@ Remove-Item -Recurse -Force $TempDir.FullName -ErrorAction SilentlyContinue
 Write-Host ""
 Write-Host "  Ferlay installed successfully!" -ForegroundColor Green
 Write-Host ""
-Write-Host "  Next steps:" -ForegroundColor Yellow
-Write-Host "    1. Open a new terminal"
-Write-Host "    2. Run:  ferlay daemon"
-Write-Host "    3. Scan the QR code with the Ferlay app"
-Write-Host "    4. Start sessions from your phone!"
+
+# --- Run interactive setup ---
+Write-Host "  Running setup..." -ForegroundColor Yellow
 Write-Host ""
-Write-Host "  Get the app:"
-Write-Host "    Android APK: https://github.com/$Repo/releases/latest"
-Write-Host ""
+& "$InstallDir\$BinaryName" setup

@@ -11,7 +11,7 @@ mod setup;
 use clap::{Parser, Subcommand};
 
 /// Default hosted relay URL. Override with --relay or `ferlay config set relay-url <url>`.
-pub const DEFAULT_RELAY_URL: &str = "wss://ferlay.dev/ws";
+pub const DEFAULT_RELAY_URL: &str = "wss://relay.ferlay.dev/ws";
 
 #[derive(Parser)]
 #[command(name = "ferlay", version, about = "Remote session manager for Claude Code")]

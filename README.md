@@ -1,230 +1,114 @@
-```
-  __          _
- / _| ___ _ _| | __ _ _  _
-|  _|/ -_) '_| |/ _` | || |
-|_|  \___|_| |_|\__,_|\_, |
-                       |__/
+<p align="center">
+  <img src="assets/ferlay_logo.png" alt="Ferlay" width="128">
+</p>
 
-  your ai agent, always within reach.
-```
+<h3 align="center">Your AI agent, always within reach.</h3>
 
-# Ferlay
+<p align="center">
+  <a href="https://github.com/y0sif/ferlay/releases"><img src="https://img.shields.io/github/v/release/y0sif/ferlay?label=release" alt="Release"></a>
+  <a href="https://github.com/y0sif/ferlay/actions"><img src="https://img.shields.io/github/actions/workflow/status/y0sif/ferlay/release.yml?label=CI" alt="CI"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License: MIT"></a>
+</p>
 
-[![Release](https://img.shields.io/github/v/release/y0sif/ferlay?label=release)](https://github.com/y0sif/ferlay/releases)
-[![CI](https://img.shields.io/github/actions/workflow/status/y0sif/ferlay/release.yml?label=CI)](https://github.com/y0sif/ferlay/actions)
-[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+---
 
 **Remote control for Claude Code from your phone.** Start, manage, and approve AI coding sessions from anywhere — all end-to-end encrypted.
 
-Install the daemon on your computer, scan a QR code with the mobile app, and you're in control. No port forwarding, no SSH tunnels, no VPN.
+One command to install, pair, and start running. No port forwarding, no SSH tunnels, no VPN.
 
----
-
-## Quick Start
-
-```sh
-# Install the daemon
-curl -sSL https://raw.githubusercontent.com/y0sif/ferlay/main/scripts/install.sh | sh
-
-# Start it
-ferlay daemon
-
-# Scan the QR code with the Ferlay app → start coding from your phone
-```
-
----
-
-## Installation
+## Install
 
 ### Linux / macOS
 
 ```sh
-curl -sSL https://raw.githubusercontent.com/y0sif/ferlay/main/scripts/install.sh | sh
+curl -sSL https://ferlay.dev/install.sh | sh
 ```
-
-<details>
-<summary><b>What the installer does</b></summary>
-
-1. Detects your OS (Linux/macOS) and architecture (x86_64/aarch64)
-2. Downloads the latest release binary from GitHub
-3. Installs to `~/.local/bin/ferlay`
-4. Adds to PATH if needed
-5. Prints next steps for background service setup
-
-</details>
 
 ### Windows
 
 ```powershell
-irm https://raw.githubusercontent.com/y0sif/ferlay/main/scripts/install.ps1 | iex
+irm https://ferlay.dev/install.ps1 | iex
 ```
-
-<details>
-<summary><b>What the installer does</b></summary>
-
-1. Detects architecture (x64/ARM64)
-2. Downloads the latest release from GitHub
-3. Installs to `%LOCALAPPDATA%\Ferlay\ferlay.exe`
-4. Adds to user PATH
-
-</details>
 
 ### From source
 
 ```sh
 cargo install --path daemon
+ferlay setup
 ```
 
-Requires Rust toolchain. See [rustup.rs](https://rustup.rs) if you don't have it.
+The installer downloads the daemon, then runs `ferlay setup` which walks you through:
+1. **Relay configuration** — uses the hosted relay by default, or enter your own URL
+2. **Pairing** — displays a QR code, scan it with the Ferlay app
+3. **Background service** — installs and starts the daemon (systemd on Linux, launchd on macOS, Task Scheduler on Windows)
 
----
-
-## Running as a Background Service
-
-The daemon needs to be running for remote control to work. You can run it manually (`ferlay daemon`) or set it up as a background service:
-
-<details>
-<summary><b>Linux (systemd)</b></summary>
-
-```sh
-# Download the service file
-mkdir -p ~/.config/systemd/user
-curl -sSL https://raw.githubusercontent.com/y0sif/ferlay/main/deploy/ferlay-daemon.service \
-  -o ~/.config/systemd/user/ferlay.service
-
-# Enable and start
-systemctl --user daemon-reload
-systemctl --user enable --now ferlay
-
-# Check status
-systemctl --user status ferlay
-```
-
-</details>
-
-<details>
-<summary><b>macOS (launchd)</b></summary>
-
-```sh
-# Symlink the binary to the standard macOS path (plist expects /usr/local/bin)
-sudo ln -sf ~/.local/bin/ferlay /usr/local/bin/ferlay
-
-# Download the plist
-curl -sSL https://raw.githubusercontent.com/y0sif/ferlay/main/deploy/dev.ferlay.daemon.plist \
-  -o ~/Library/LaunchAgents/dev.ferlay.daemon.plist
-
-# Load and start
-launchctl load ~/Library/LaunchAgents/dev.ferlay.daemon.plist
-
-# Check status
-launchctl list | grep ferlay
-```
-
-> If you installed ferlay elsewhere, edit the plist to update the binary path before loading.
-
-</details>
-
-<details>
-<summary><b>Windows (Task Scheduler)</b></summary>
-
-```powershell
-# Create a scheduled task that starts ferlay on login
-$Action = New-ScheduledTaskAction -Execute "$env:LOCALAPPDATA\Ferlay\ferlay.exe" -Argument "daemon"
-$Trigger = New-ScheduledTaskTrigger -AtLogon
-$Settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -ExecutionTimeLimit 0
-Register-ScheduledTask -TaskName "Ferlay" -Action $Action -Trigger $Trigger -Settings $Settings -Description "Ferlay Daemon"
-
-# Start it now
-Start-ScheduledTask -TaskName "Ferlay"
-```
-
-</details>
+After setup, the daemon runs in the background and starts automatically on login. That's it.
 
 ---
 
 ## How It Works
 
 ```
-📱 Phone App  ←→  🔄 Relay Server  ←→  🖥️ Daemon  ←→  Claude Code
-                  (relay.ferlay.dev)    (your machine)
+Phone App  <-->  Relay Server  <-->  Daemon  <-->  Claude Code
+                 (relay.ferlay.dev)  (your machine)
 ```
 
 1. **Daemon** runs on your computer, manages Claude Code sessions
 2. **Relay** routes encrypted messages between your phone and daemon
 3. **App** on your phone — scan QR to pair, tap to start sessions
 
-All communication is **end-to-end encrypted** (X25519 + AES-256-GCM). The relay server cannot read your messages — it only forwards opaque ciphertext.
+All communication is **end-to-end encrypted** (X25519 + AES-256-GCM). The relay only forwards opaque ciphertext.
 
 ---
 
-## Deployment Modes
-
-### Default: Hosted Relay
-
-Zero config. Install the daemon, scan the QR code, done. Uses the public relay at `relay.ferlay.dev`.
-
-```sh
-ferlay daemon
-```
-
-### Self-Hosted Relay
+<details>
+<summary><b>Self-hosted relay</b></summary>
 
 Run your own relay for full infrastructure control. No database, no external dependencies.
 
 ```sh
-# Option 1: Docker (recommended)
+# Docker
 docker run -d -p 8080:8080 ghcr.io/y0sif/ferlay-relay:latest
 
-# Option 2: From source
+# Or from source
 cargo run -p furlay-relay
 ```
 
-Then point your daemon at it:
+Point your daemon at it:
 
 ```sh
 ferlay config set relay-url wss://your-relay.example.com/ws
 ```
 
-<details>
-<summary><b>Production setup with TLS</b></summary>
-
-The relay needs TLS (`wss://`) in production. Options:
-
-- **Cloudflare Tunnel** — expose `localhost:8080` via a tunnel, Cloudflare handles TLS
-- **Caddy reverse proxy** — `deploy/Caddyfile` and `deploy/docker-compose.caddy.yml` provide a ready-made setup with auto-TLS via Let's Encrypt
-- **nginx** — example config in `deploy/nginx.conf`
-
-```sh
-# Using the Docker Compose setup on your server
-git clone https://github.com/y0sif/ferlay
-cd ferlay/deploy
-docker compose up -d
-```
+For production TLS, the `deploy/` directory has ready-made configs for Cloudflare Tunnel, Caddy (auto-TLS), and nginx.
 
 </details>
 
-### Local Mode
+<details>
+<summary><b>Local mode</b></summary>
 
-For development or same-network use. Starts a local relay and daemon together — no external server needed.
+For development or same-network use. Runs a local relay and daemon together — no external server.
 
 ```sh
 ferlay daemon --local
 ```
 
-Or use the dev script which builds and runs everything:
+Or use the dev script:
 
 ```sh
 ./scripts/ferlay-local.sh        # Linux/macOS
 ./scripts/ferlay-local.ps1       # Windows
 ```
 
+</details>
+
 ---
 
 ## CLI Reference
 
 ```
-ferlay daemon [--local] [--relay <URL>] [--re-pair]    Start the daemon
-ferlay setup                                           Interactive setup
+ferlay setup                                           Interactive setup (relay, pairing, auto-start)
+ferlay daemon [--local] [--relay <URL>] [--re-pair]    Start the daemon in foreground
 ferlay pair                                            Re-pair with a new phone
 ferlay status                                          Check daemon health
 ferlay config show                                     Show current configuration
@@ -243,8 +127,7 @@ ferlay/
 ├── app/          Flutter mobile app (Android, iOS)
 ├── shared/       Shared message types and protocol definitions
 ├── scripts/      Install scripts (Linux, macOS, Windows)
-├── deploy/       Service files (systemd, launchd, Docker, Caddy)
-└── site/         Project website (ferlay.dev)
+└── deploy/       Service files and deployment configs
 ```
 
 ---
@@ -252,28 +135,15 @@ ferlay/
 ## Development
 
 ```sh
-# Build everything
-cargo build
-
-# Run tests
-cargo test
-
-# Lint
-cargo clippy --all-targets -- -D warnings
-
-# Run relay locally with debug logging
-RUST_LOG=furlay_relay=debug cargo run -p furlay-relay
-
-# Run daemon + local relay together
-./scripts/ferlay-local.sh
+cargo build                                             # Build all crates
+cargo test                                              # Run tests
+cargo clippy --all-targets -- -D warnings               # Lint
+RUST_LOG=furlay_relay=debug cargo run -p furlay-relay    # Run relay locally
+./scripts/ferlay-local.sh                               # Run daemon + local relay
 ```
 
-Flutter app:
-
 ```sh
-cd app
-flutter pub get
-flutter run
+cd app && flutter pub get && flutter run                # Run the Flutter app
 ```
 
 ---
