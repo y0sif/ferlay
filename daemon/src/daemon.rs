@@ -267,8 +267,8 @@ async fn handle_app_message(
     health_sessions: &std::sync::Arc<tokio::sync::Mutex<Vec<crate::messages::SessionInfo>>>,
 ) {
     match msg {
-        AppMessage::StartSession { directory, name } => {
-            session_manager.start(directory, name).await;
+        AppMessage::StartSession { directory, name, permission_mode, worktree } => {
+            session_manager.start(directory, name, permission_mode, worktree).await;
         }
         AppMessage::StopSession { session_id } => {
             session_manager.stop(&session_id).await;

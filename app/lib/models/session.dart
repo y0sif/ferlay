@@ -5,6 +5,8 @@ class Session {
   final SessionStatus status;
   final String? url;
   final String? error;
+  final String? permissionMode;
+  final bool worktree;
 
   const Session({
     required this.id,
@@ -13,6 +15,8 @@ class Session {
     required this.status,
     this.url,
     this.error,
+    this.permissionMode,
+    this.worktree = false,
   });
 
   factory Session.fromJson(Map<String, dynamic> json) {
@@ -23,6 +27,8 @@ class Session {
       status: SessionStatus.fromString(json['status'] ?? 'starting'),
       url: json['url'],
       error: json['error'],
+      permissionMode: json['permission_mode'],
+      worktree: json['worktree'] ?? false,
     );
   }
 
@@ -33,6 +39,8 @@ class Session {
     SessionStatus? status,
     String? url,
     String? error,
+    String? permissionMode,
+    bool? worktree,
   }) {
     return Session(
       id: id ?? this.id,
@@ -41,8 +49,22 @@ class Session {
       status: status ?? this.status,
       url: url ?? this.url,
       error: error ?? this.error,
+      permissionMode: permissionMode ?? this.permissionMode,
+      worktree: worktree ?? this.worktree,
     );
   }
+}
+
+enum PermissionMode {
+  defaultMode('default', 'Default'),
+  acceptEdits('acceptEdits', 'Accept Edits'),
+  bypassPermissions('bypassPermissions', 'Bypass Permissions'),
+  plan('plan', 'Plan Mode'),
+  dontAsk('dontAsk', "Don't Ask");
+
+  final String value;
+  final String label;
+  const PermissionMode(this.value, this.label);
 }
 
 enum SessionStatus {
