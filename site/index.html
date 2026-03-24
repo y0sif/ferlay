@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ferlay — Remote Control for Claude Code</title>
+  <meta name="description" content="Control Claude Code from your phone. Start, manage, and approve AI coding sessions from anywhere — end-to-end encrypted.">
+  <meta property="og:title" content="Ferlay — Remote Control for Claude Code">
+  <meta property="og:description" content="Control Claude Code from your phone. Start, manage, and approve AI coding sessions from anywhere — end-to-end encrypted.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://ferlay.dev">
+  <link rel="icon" type="image/png" href="logo.png">
+  <style>
+    :root {
+      --bg: #0d0d0d;
+      --surface: #161616;
+      --border: #2a2a2a;
+      --text: #e4e4e4;
+      --text-muted: #888;
+      --accent: #7C4DFF;
+      --accent-dim: #5e35b1;
+      --code-bg: #1a1a2e;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      min-height: 100vh;
+    }
+
+    .container {
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 0 24px;
+    }
+
+    /* Header */
+    header {
+      padding: 80px 0 40px;
+      text-align: center;
+    }
+
+    .logo {
+      width: 96px;
+      height: 96px;
+      border-radius: 20px;
+      margin-bottom: 24px;
+    }
+
+    h1 {
+      font-size: 2.5rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      margin-bottom: 12px;
+    }
+
+    .tagline {
+      color: var(--text-muted);
+      font-size: 1.1rem;
+      max-width: 480px;
+      margin: 0 auto 32px;
+    }
+
+    .badges {
+      display: flex;
+      gap: 8px;
+      justify-content: center;
+      margin-bottom: 40px;
+    }
+
+    .badges img {
+      height: 20px;
+    }
+
+    /* Hero description */
+    .hero-desc {
+      font-size: 1.15rem;
+      color: var(--text);
+      text-align: center;
+      max-width: 560px;
+      margin: 0 auto 48px;
+    }
+
+    .hero-desc strong {
+      color: var(--accent);
+    }
+
+    /* Install section */
+    .install {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 32px;
+      margin-bottom: 48px;
+    }
+
+    .install h2 {
+      font-size: 1rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-muted);
+      margin-bottom: 16px;
+    }
+
+    .install-cmd {
+      position: relative;
+      background: var(--code-bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 16px 20px;
+      font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+      font-size: 0.95rem;
+      color: #c4b5fd;
+      overflow-x: auto;
+      margin-bottom: 12px;
+    }
+
+    .install-cmd .comment {
+      color: #555;
+    }
+
+    .install-alt {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+    }
+
+    .install-alt a {
+      color: var(--accent);
+      text-decoration: none;
+    }
+
+    .install-alt a:hover {
+      text-decoration: underline;
+    }
+
+    /* Features */
+    .features {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 24px;
+      margin-bottom: 48px;
+    }
+
+    @media (min-width: 540px) {
+      .features {
+        grid-template-columns: 1fr 1fr 1fr;
+      }
+    }
+
+    .feature {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 24px;
+    }
+
+    .feature-icon {
+      font-size: 1.5rem;
+      margin-bottom: 12px;
+    }
+
+    .feature h3 {
+      font-size: 1rem;
+      margin-bottom: 8px;
+    }
+
+    .feature p {
+      font-size: 0.9rem;
+      color: var(--text-muted);
+      line-height: 1.5;
+    }
+
+    /* Architecture */
+    .architecture {
+      text-align: center;
+      margin-bottom: 48px;
+    }
+
+    .architecture h2 {
+      font-size: 1.3rem;
+      margin-bottom: 20px;
+    }
+
+    .arch-diagram {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 24px;
+      font-family: 'SF Mono', 'Fira Code', monospace;
+      font-size: 0.9rem;
+      color: var(--text-muted);
+      display: inline-block;
+    }
+
+    .arch-diagram .highlight {
+      color: var(--accent);
+    }
+
+    /* CTA */
+    .cta {
+      text-align: center;
+      padding: 48px 0;
+      border-top: 1px solid var(--border);
+      margin-bottom: 48px;
+    }
+
+    .cta h2 {
+      font-size: 1.5rem;
+      margin-bottom: 16px;
+    }
+
+    .cta p {
+      color: var(--text-muted);
+      margin-bottom: 24px;
+    }
+
+    .btn {
+      display: inline-block;
+      background: var(--accent);
+      color: white;
+      padding: 12px 28px;
+      border-radius: 8px;
+      text-decoration: none;
+      font-weight: 600;
+      font-size: 1rem;
+      transition: background 0.2s;
+    }
+
+    .btn:hover {
+      background: var(--accent-dim);
+    }
+
+    .btn-outline {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text);
+      margin-left: 12px;
+    }
+
+    .btn-outline:hover {
+      background: var(--surface);
+    }
+
+    /* Footer */
+    footer {
+      text-align: center;
+      padding: 32px 0;
+      border-top: 1px solid var(--border);
+      color: var(--text-muted);
+      font-size: 0.85rem;
+    }
+
+    footer a {
+      color: var(--text-muted);
+      text-decoration: none;
+    }
+
+    footer a:hover {
+      color: var(--text);
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <img src="logo.png" alt="Ferlay" class="logo">
+      <h1>Ferlay</h1>
+      <p class="tagline">Your AI agent, always within reach.</p>
+      <div class="badges">
+        <a href="https://github.com/y0sif/ferlay/releases"><img src="https://img.shields.io/github/v/release/y0sif/ferlay?label=release&color=7C4DFF" alt="Release"></a>
+        <a href="https://github.com/y0sif/ferlay"><img src="https://img.shields.io/github/license/y0sif/ferlay?color=7C4DFF" alt="License"></a>
+      </div>
+    </header>
+
+    <p class="hero-desc">
+      <strong>Remote control for Claude Code from your phone.</strong>
+      Start, manage, and approve AI coding sessions from anywhere.
+      Install the daemon, scan a QR code, and you're in control.
+      All communication is end-to-end encrypted.
+    </p>
+
+    <div class="install">
+      <h2>Install</h2>
+      <div class="install-cmd">
+        <span class="comment"># Linux / macOS</span><br>
+        curl -sSL https://raw.githubusercontent.com/y0sif/ferlay/main/scripts/install.sh | sh
+      </div>
+      <div class="install-cmd">
+        <span class="comment"># Windows (PowerShell)</span><br>
+        irm https://raw.githubusercontent.com/y0sif/ferlay/main/scripts/install.ps1 | iex
+      </div>
+      <p class="install-alt">
+        Or build from source: <code>cargo install --path daemon</code> &mdash;
+        <a href="https://github.com/y0sif/ferlay#installation">all install methods</a>
+      </p>
+    </div>
+
+    <div class="features">
+      <div class="feature">
+        <div class="feature-icon">📱</div>
+        <h3>Remote Control</h3>
+        <p>Start and manage Claude Code sessions from your phone. No SSH, no VPN, no port forwarding.</p>
+      </div>
+      <div class="feature">
+        <div class="feature-icon">🔒</div>
+        <h3>End-to-End Encrypted</h3>
+        <p>X25519 key exchange + AES-256-GCM. The relay server never sees your data.</p>
+      </div>
+      <div class="feature">
+        <div class="feature-icon">🖥️</div>
+        <h3>Cross-Platform</h3>
+        <p>Daemon runs on Linux, macOS, and Windows. App available for Android and iOS.</p>
+      </div>
+    </div>
+
+    <div class="architecture">
+      <h2>How It Works</h2>
+      <div class="arch-diagram">
+        <span class="highlight">Phone App</span> &larr;&rarr; <span class="highlight">Relay Server</span> &larr;&rarr; <span class="highlight">Daemon</span> &larr;&rarr; Claude Code<br>
+        <br>
+        Pair once with a QR code. All messages are encrypted end-to-end.<br>
+        The relay only forwards opaque ciphertext between your devices.
+      </div>
+    </div>
+
+    <div class="cta">
+      <h2>Get Started</h2>
+      <p>Install the daemon, grab the app, and start coding from anywhere.</p>
+      <a href="https://github.com/y0sif/ferlay#quick-start" class="btn">Quick Start</a>
+      <a href="https://github.com/y0sif/ferlay" class="btn btn-outline">GitHub</a>
+    </div>
+
+    <footer>
+      <p>
+        <a href="https://github.com/y0sif/ferlay">GitHub</a> &middot;
+        <a href="https://github.com/y0sif/ferlay/releases">Releases</a> &middot;
+        <a href="https://github.com/y0sif/ferlay/blob/main/CONTRIBUTING.md">Contributing</a>
+      </p>
+      <p style="margin-top: 8px;">MIT License &copy; 2026 Ferlay contributors</p>
+    </footer>
+  </div>
+</body>
+</html>
