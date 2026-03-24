@@ -21,16 +21,22 @@ class _NewSessionScreenState extends ConsumerState<NewSessionScreen> {
   final _formKey = GlobalKey<FormState>();
   final _directoryController = TextEditingController(text: '~/Projects/');
   final _nameController = TextEditingController();
+  final _worktreeBranchController = TextEditingController();
   bool _loading = false;
   String _loadingMessage = '';
   StreamSubscription<RelayConnectionState>? _disconnectSub;
   Timer? _progressTimer;
   Timer? _timeoutTimer;
 
+  PermissionMode _permissionMode = PermissionMode.defaultMode;
+  ModelOption _model = ModelOption.defaultModel;
+  bool _useWorktree = false;
+
   @override
   void dispose() {
     _directoryController.dispose();
     _nameController.dispose();
+    _worktreeBranchController.dispose();
     _disconnectSub?.cancel();
     _progressTimer?.cancel();
     _timeoutTimer?.cancel();
@@ -48,7 +54,7 @@ class _NewSessionScreenState extends ConsumerState<NewSessionScreen> {
     return null;
   }
 
-  void _startSession() {
+  Future<void> _startSession() async {
     if (!_formKey.currentState!.validate()) return;
 
     final directory = _directoryController.text.trim();
@@ -64,6 +70,31 @@ class _NewSessionScreenState extends ConsumerState<NewSessionScreen> {
       return;
     }
 
+    // Confirm bypass permissions
+    if (_permissionMode == PermissionMode.bypass) {
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('Bypass Permissions?'),
+          content: const Text(
+            'This allows Claude to modify files and run commands without asking for confirmation. '
+            'Only use this in disposable or version-controlled environments.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('Proceed'),
+            ),
+          ],
+        ),
+      );
+      if (confirmed != true) return;
+    }
+
     setState(() {
       _loading = true;
       _loadingMessage = 'Sending to daemon...';
@@ -73,6 +104,13 @@ class _NewSessionScreenState extends ConsumerState<NewSessionScreen> {
     ref.read(sessionsProvider.notifier).startSession(
           directory: directory,
           name: name.isNotEmpty ? name : 'session',
+          permissionMode: _permissionMode == PermissionMode.defaultMode
+              ? null
+              : _permissionMode.value,
+          worktree: _useWorktree
+              ? _worktreeBranchController.text.trim()
+              : null,
+          model: _model == ModelOption.defaultModel ? null : _model.value,
         );
 
     // Progressive loading messages
@@ -219,6 +257,95 @@ class _NewSessionScreenState extends ConsumerState<NewSessionScreen> {
                   border: OutlineInputBorder(),
                 ),
               ),
+              const SizedBox(height: 24),
+
+              // Session options section
+              Text('Session Options',
+                  style: Theme.of(context).textTheme.titleSmall),
+              const SizedBox(height: 12),
+
+              // Permission mode dropdown
+              DropdownButtonFormField<PermissionMode>(
+                initialValue: _permissionMode,
+                decoration: const InputDecoration(
+                  labelText: 'Permission Mode',
+                  prefixIcon: Icon(Icons.shield_outlined),
+                  border: OutlineInputBorder(),
+                ),
+                items: PermissionMode.values
+                    .map((mode) => DropdownMenuItem(
+                          value: mode,
+                          child: Text(mode.label),
+                        ))
+                    .toList(),
+                onChanged: _loading
+                    ? null
+                    : (value) {
+                        if (value != null) {
+                          setState(() => _permissionMode = value);
+                        }
+                      },
+              ),
+              if (_permissionMode == PermissionMode.bypass) ...[
+                const SizedBox(height: 4),
+                Text(
+                  'Claude can modify files and run commands without confirmation.',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Theme.of(context).colorScheme.error,
+                      ),
+                ),
+              ],
+              const SizedBox(height: 16),
+
+              // Model dropdown
+              DropdownButtonFormField<ModelOption>(
+                initialValue: _model,
+                decoration: const InputDecoration(
+                  labelText: 'Model',
+                  prefixIcon: Icon(Icons.smart_toy_outlined),
+                  border: OutlineInputBorder(),
+                ),
+                items: ModelOption.values
+                    .map((model) => DropdownMenuItem(
+                          value: model,
+                          child: Text(model.label),
+                        ))
+                    .toList(),
+                onChanged: _loading
+                    ? null
+                    : (value) {
+                        if (value != null) {
+                          setState(() => _model = value);
+                        }
+                      },
+              ),
+              const SizedBox(height: 16),
+
+              // Worktree toggle
+              SwitchListTile(
+                title: const Text('Use Worktree'),
+                subtitle: const Text('Isolate session in a new git worktree'),
+                secondary: const Icon(Icons.account_tree_outlined),
+                value: _useWorktree,
+                contentPadding: EdgeInsets.zero,
+                onChanged: _loading
+                    ? null
+                    : (value) => setState(() => _useWorktree = value),
+              ),
+              if (_useWorktree) ...[
+                const SizedBox(height: 8),
+                TextFormField(
+                  controller: _worktreeBranchController,
+                  enabled: !_loading,
+                  decoration: const InputDecoration(
+                    labelText: 'Branch Name',
+                    hintText: 'Auto-generated if empty',
+                    prefixIcon: Icon(Icons.merge_type),
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+              ],
+
               const SizedBox(height: 24),
               FilledButton.icon(
                 onPressed: canStart ? _startSession : null,

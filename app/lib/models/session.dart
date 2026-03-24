@@ -5,6 +5,8 @@ class Session {
   final SessionStatus status;
   final String? url;
   final String? error;
+  final String? permissionMode;
+  final String? model;
 
   const Session({
     required this.id,
@@ -13,6 +15,8 @@ class Session {
     required this.status,
     this.url,
     this.error,
+    this.permissionMode,
+    this.model,
   });
 
   factory Session.fromJson(Map<String, dynamic> json) {
@@ -23,6 +27,8 @@ class Session {
       status: SessionStatus.fromString(json['status'] ?? 'starting'),
       url: json['url'],
       error: json['error'],
+      permissionMode: json['permission_mode'],
+      model: json['model'],
     );
   }
 
@@ -33,6 +39,8 @@ class Session {
     SessionStatus? status,
     String? url,
     String? error,
+    String? permissionMode,
+    String? model,
   }) {
     return Session(
       id: id ?? this.id,
@@ -41,8 +49,33 @@ class Session {
       status: status ?? this.status,
       url: url ?? this.url,
       error: error ?? this.error,
+      permissionMode: permissionMode ?? this.permissionMode,
+      model: model ?? this.model,
     );
   }
+}
+
+enum PermissionMode {
+  defaultMode('default', 'Default'),
+  acceptEdits('acceptEdits', 'Accept Edits'),
+  bypass('bypass', 'Bypass Permissions'),
+  plan('plan', 'Plan Mode'),
+  auto('auto', 'Auto');
+
+  final String value;
+  final String label;
+  const PermissionMode(this.value, this.label);
+}
+
+enum ModelOption {
+  defaultModel('default', 'Default'),
+  sonnet('sonnet', 'Sonnet'),
+  opus('opus', 'Opus'),
+  haiku('haiku', 'Haiku');
+
+  final String value;
+  final String label;
+  const ModelOption(this.value, this.label);
 }
 
 enum SessionStatus {

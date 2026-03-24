@@ -38,6 +38,8 @@ struct Session {
     status: SessionStatus,
     url: Option<String>,
     child: Option<Child>,
+    permission_mode: Option<String>,
+    model: Option<String>,
 }
 
 pub struct SessionManager {
@@ -58,7 +60,14 @@ impl SessionManager {
         }
     }
 
-    pub async fn start(&mut self, directory: String, name: String) {
+    pub async fn start(
+        &mut self,
+        directory: String,
+        name: String,
+        permission_mode: Option<String>,
+        worktree: Option<String>,
+        model: Option<String>,
+    ) {
         let session_id = uuid::Uuid::new_v4().to_string();
         tracing::info!(session_id = %session_id, name = %name, dir = %directory, "Starting session");
 
@@ -98,8 +107,47 @@ impl SessionManager {
             }
         }
 
+        // Build CLI args dynamically based on session options
+        let mut args = vec![
+            "remote-control".to_string(),
+            "--name".to_string(),
+            name.clone(),
+            "--verbose".to_string(),
+            "--spawn=same-dir".to_string(),
+        ];
+
+        // Permission mode
+        if let Some(ref mode) = permission_mode {
+            match mode.as_str() {
+                "bypass" => {
+                    args.push("--dangerously-skip-permissions".to_string());
+                }
+                "default" | "" => {}
+                other => {
+                    args.push("--permission-mode".to_string());
+                    args.push(other.to_string());
+                }
+            }
+        }
+
+        // Worktree
+        if let Some(ref branch) = worktree {
+            args.push("--worktree".to_string());
+            if !branch.is_empty() {
+                args.push(branch.clone());
+            }
+        }
+
+        // Model
+        if let Some(ref m) = model {
+            if !m.is_empty() && m != "default" {
+                args.push("--model".to_string());
+                args.push(m.clone());
+            }
+        }
+
         let child_result = Command::new("claude")
-            .args(["remote-control", "--name", &name, "--verbose", "--spawn=same-dir"])
+            .args(&args)
             .current_dir(&expanded_dir)
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
@@ -122,6 +170,8 @@ impl SessionManager {
             status: SessionStatus::Starting,
             url: None,
             child: None,
+            permission_mode: permission_mode.clone(),
+            model: model.clone(),
         };
         self.sessions.insert(session_id.clone(), session);
         self.send_status(&session_id, "starting", None);
@@ -181,6 +231,8 @@ impl SessionManager {
                 directory: s.directory.clone(),
                 status: s.status.as_str().to_string(),
                 url: s.url.clone(),
+                permission_mode: s.permission_mode.clone(),
+                model: s.model.clone(),
             })
             .collect()
     }

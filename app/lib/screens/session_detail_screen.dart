@@ -55,6 +55,19 @@ class SessionDetailScreen extends ConsumerWidget {
             const SizedBox(height: 16),
           ],
 
+          // Session options
+          if (session.permissionMode != null &&
+              session.permissionMode != 'default') ...[
+            _infoRow(theme, Icons.shield_outlined, 'Permission Mode',
+                session.permissionMode!),
+            const SizedBox(height: 16),
+          ],
+          if (session.model != null && session.model != 'default') ...[
+            _infoRow(
+                theme, Icons.smart_toy_outlined, 'Model', session.model!),
+            const SizedBox(height: 16),
+          ],
+
           // URL section - prominent card
           if (session.url != null) ...[
             Card(

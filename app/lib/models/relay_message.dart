@@ -64,11 +64,18 @@ class AppMessage {
   static Map<String, dynamic> startSession({
     required String directory,
     required String name,
+    String? permissionMode,
+    String? worktree,
+    String? model,
   }) {
     return {
       'type': 'start_session',
       'directory': directory,
       'name': name,
+      if (permissionMode != null && permissionMode != 'default')
+        'permission_mode': permissionMode,
+      if (worktree != null) 'worktree': worktree,
+      if (model != null && model != 'default') 'model': model,
     };
   }
 
