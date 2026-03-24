@@ -2,7 +2,7 @@
 set -e
 
 # Ferlay Daemon Installer
-# Usage: curl -sSL https://get.ferlay.dev | sh
+# Usage: curl -sSL https://raw.githubusercontent.com/y0sif/ferlay/main/scripts/install.sh | sh
 
 REPO="y0sif/ferlay"
 BINARY_NAME="ferlay"
@@ -97,7 +97,7 @@ case ":$PATH:" in
     ;;
 esac
 
-# --- Optional: systemd service (Linux only) ---
+# --- Optional: background service setup ---
 if [ "$PLATFORM" = "linux" ] && command -v systemctl >/dev/null 2>&1; then
   SYSTEMD_DIR="$HOME/.config/systemd/user"
   SERVICE_FILE="$SYSTEMD_DIR/ferlay.service"
@@ -110,6 +110,18 @@ if [ "$PLATFORM" = "linux" ] && command -v systemctl >/dev/null 2>&1; then
     echo "    curl -sSL https://raw.githubusercontent.com/$REPO/main/deploy/ferlay-daemon.service > $SERVICE_FILE"
     echo "    systemctl --user daemon-reload"
     echo "    systemctl --user enable --now ferlay"
+    echo ""
+  fi
+elif [ "$PLATFORM" = "macos" ]; then
+  PLIST_FILE="$HOME/Library/LaunchAgents/dev.ferlay.daemon.plist"
+
+  if [ ! -f "$PLIST_FILE" ]; then
+    echo ""
+    echo "  Tip: Run as a launchd service for auto-start:"
+    echo ""
+    echo "    sudo ln -sf $INSTALL_DIR/ferlay /usr/local/bin/ferlay"
+    echo "    curl -sSL https://raw.githubusercontent.com/$REPO/main/deploy/dev.ferlay.daemon.plist > $PLIST_FILE"
+    echo "    launchctl load $PLIST_FILE"
     echo ""
   fi
 fi

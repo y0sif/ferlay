@@ -1,5 +1,5 @@
 # Ferlay Daemon Installer for Windows
-# Usage: irm https://get.ferlay.dev/windows | iex
+# Usage: irm https://raw.githubusercontent.com/y0sif/ferlay/main/scripts/install.ps1 | iex
 #   or:  powershell -ExecutionPolicy Bypass -File install.ps1
 
 $ErrorActionPreference = "Stop"

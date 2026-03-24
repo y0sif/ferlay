@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
-const DEFAULT_RELAY_URL: &str = "wss://ferlay.dev/ws";
+const DEFAULT_RELAY_URL: &str = "wss://relay.ferlay.dev/ws";
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Config {
