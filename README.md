@@ -10,7 +10,7 @@
 
 ---
 
-**Remote control for Claude Code from your phone.** Start, manage, and approve AI coding sessions from anywhere — all end-to-end encrypted.
+**Remote control for Claude Code from your phone.** Start, manage, and approve AI coding sessions from anywhere, all end-to-end encrypted.
 
 One command to install, pair, and start running. No port forwarding, no SSH tunnels, no VPN.
 
@@ -36,9 +36,9 @@ ferlay setup
 ```
 
 The installer downloads the daemon, then runs `ferlay setup` which walks you through:
-1. **Relay configuration** — uses the hosted relay by default, or enter your own URL
-2. **Pairing** — displays a QR code, scan it with the Ferlay app
-3. **Background service** — installs and starts the daemon (systemd on Linux, launchd on macOS, Task Scheduler on Windows)
+1. **Relay configuration** - uses the hosted relay by default, or enter your own URL
+2. **Pairing** - displays a QR code, scan it with the Ferlay app
+3. **Background service** - installs and starts the daemon (systemd on Linux, launchd on macOS, Task Scheduler on Windows)
 
 After setup, the daemon runs in the background and starts automatically on login. That's it.
 
@@ -53,7 +53,7 @@ Phone App  <-->  Relay Server  <-->  Daemon  <-->  Claude Code
 
 1. **Daemon** runs on your computer, manages Claude Code sessions
 2. **Relay** routes encrypted messages between your phone and daemon
-3. **App** on your phone — scan QR to pair, tap to start sessions
+3. **App** on your phone - scan QR to pair, tap to start sessions
 
 All communication is **end-to-end encrypted** (X25519 + AES-256-GCM). The relay only forwards opaque ciphertext.
 
@@ -85,7 +85,7 @@ For production TLS, the `deploy/` directory has ready-made configs for Cloudflar
 <details>
 <summary><b>Local mode</b></summary>
 
-For development or same-network use. Runs a local relay and daemon together — no external server.
+For development or same-network use. Runs a local relay and daemon together, no external server.
 
 ```sh
 ferlay daemon --local
@@ -120,7 +120,7 @@ ferlay config reset                                    Reset to defaults
 
 ```
 ferlay/
-├── daemon/       Rust CLI daemon — manages Claude Code sessions
+├── daemon/       Rust CLI daemon - manages Claude Code sessions
 ├── relay/        Rust WebSocket relay server
 ├── app/          Flutter mobile app (Android, iOS)
 ├── shared/       Shared message types and protocol definitions
@@ -150,9 +150,9 @@ cd app && flutter pub get && flutter run                # Run the Flutter app
 
 The biggest ways to help right now:
 
-1. **Test the daemon** on your OS — Linux distros, macOS versions, Windows. Report what works and what doesn't.
-2. **Test the app** — pairing flow, session management, connection stability.
-3. **Bug reports** — if pairing fails, sessions don't start, or connections drop, open an issue.
+1. **Test the daemon** on your OS - Linux distros, macOS versions, Windows. Report what works and what doesn't.
+2. **Test the app** - pairing flow, session management, connection stability.
+3. **Bug reports** - if pairing fails, sessions don't start, or connections drop, open an issue.
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup and guidelines.
 
