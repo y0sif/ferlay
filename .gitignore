@@ -13,6 +13,9 @@ app/.flutter-plugins-dependencies
 app/android/.gradle/
 app/ios/Pods/
 
+# Claude Code
+.claude/
+
 # IDE
 .idea/
 .vscode/
