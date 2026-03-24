@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="../ferlay_logo.png" alt="Ferlay" width="120" />
+  <img src="../assets/ferlay_logo.png" alt="Ferlay" width="120" />
 </p>
 
 <h3 align="center">ferlay</h3>
