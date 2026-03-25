@@ -81,6 +81,17 @@
       margin: 0 auto 20px;
     }
 
+    .badges {
+      display: flex;
+      gap: 8px;
+      justify-content: center;
+      margin-bottom: 20px;
+    }
+
+    .badges img {
+      height: 20px;
+    }
+
     .hero-desc {
       font-size: 1.05rem;
       color: var(--text-muted);
@@ -568,6 +579,11 @@
       <img src="logo.png" alt="Ferlay" class="logo">
       <h1>Ferlay</h1>
       <p class="tagline">Your AI agent, always within reach.</p>
+      <div class="badges">
+        <a href="https://github.com/y0sif/ferlay/releases"><img src="https://img.shields.io/github/v/release/y0sif/ferlay?label=release&color=7C4DFF" alt="Release"></a>
+        <a href="https://github.com/y0sif/ferlay/actions"><img src="https://img.shields.io/github/actions/workflow/status/y0sif/ferlay/release.yml?label=CI&color=7C4DFF" alt="CI"></a>
+        <a href="https://github.com/y0sif/ferlay/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-7C4DFF" alt="License: MIT"></a>
+      </div>
       <p class="hero-desc">
         Remote control for Claude Code from your phone.
         Start, manage, and approve AI coding sessions from anywhere.
