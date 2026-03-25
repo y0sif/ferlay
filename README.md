@@ -5,6 +5,8 @@
 <h3 align="center">Your AI agent, always within reach.</h3>
 
 <p align="center">
+  <a href="https://github.com/y0sif/ferlay/releases"><img src="https://img.shields.io/github/v/release/y0sif/ferlay?label=release" alt="Release"></a>
+  <a href="https://github.com/y0sif/ferlay/actions"><img src="https://img.shields.io/github/actions/workflow/status/y0sif/ferlay/release.yml?label=CI" alt="CI"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License: MIT"></a>
 </p>
 
