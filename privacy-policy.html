@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Privacy Policy - Ferlay</title>
+  <meta name="description" content="Privacy Policy for the Ferlay mobile app.">
+  <link rel="icon" type="image/png" href="logo.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #1C1B1F;
+      --bg-deep: #141317;
+      --surface: #2B2930;
+      --border: #3a3740;
+      --text: #E6E1E5;
+      --text-secondary: #CAC4D0;
+      --text-muted: #938F99;
+      --accent: #7C4DFF;
+      --accent-light: #B388FF;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.8;
+      min-height: 100vh;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .container {
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 3rem 1.5rem;
+    }
+
+    .back-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      color: var(--accent-light);
+      text-decoration: none;
+      font-size: 0.9rem;
+      margin-bottom: 2rem;
+    }
+    .back-link:hover { text-decoration: underline; }
+
+    h1 {
+      font-size: 2rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .updated {
+      color: var(--text-muted);
+      font-size: 0.85rem;
+      margin-bottom: 2.5rem;
+    }
+
+    h2 {
+      font-size: 1.25rem;
+      color: var(--accent-light);
+      margin-top: 2rem;
+      margin-bottom: 0.75rem;
+    }
+
+    p, li {
+      color: var(--text-secondary);
+      margin-bottom: 0.75rem;
+    }
+
+    ul {
+      padding-left: 1.5rem;
+      margin-bottom: 1rem;
+    }
+
+    strong {
+      color: var(--text);
+    }
+
+    footer {
+      margin-top: 4rem;
+      padding-top: 1.5rem;
+      border-top: 1px solid var(--border);
+      text-align: center;
+    }
+
+    footer p {
+      color: var(--text-muted);
+      font-size: 0.85rem;
+    }
+
+    footer a {
+      color: var(--accent-light);
+      text-decoration: none;
+    }
+    footer a:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <a href="/" class="back-link">&larr; Back to Ferlay</a>
+
+    <h1>Privacy Policy</h1>
+    <p class="updated">Last updated: March 27, 2026</p>
+
+    <p>Ferlay ("the App") is an open-source mobile remote control for Claude Code sessions. Your privacy is important to us. This policy explains what data the App handles and how.</p>
+
+    <h2>Data We Do Not Collect</h2>
+    <p>Ferlay does <strong>not</strong> collect, store, or transmit any personal information. Specifically:</p>
+    <ul>
+      <li>No account or registration required</li>
+      <li>No analytics or telemetry</li>
+      <li>No advertising or ad tracking</li>
+      <li>No location data</li>
+      <li>No contacts, photos, or media access</li>
+      <li>No crash reporting sent to external services</li>
+    </ul>
+
+    <h2>Data Stored Locally on Your Device</h2>
+    <p>The App stores the following data locally using encrypted device storage (Flutter Secure Storage):</p>
+    <ul>
+      <li><strong>Device ID</strong> — A randomly generated UUID used to identify your device to the relay server. This is not linked to your identity.</li>
+      <li><strong>Relay URL</strong> — The WebSocket endpoint for communication (default: relay.ferlay.dev).</li>
+      <li><strong>Paired device ID</strong> — The identifier of the daemon you paired with.</li>
+      <li><strong>Encryption key</strong> — An AES-256 key derived from X25519 key exchange, used for end-to-end encryption.</li>
+      <li><strong>Session cache</strong> — A local cache of your Claude Code sessions for offline viewing.</li>
+    </ul>
+    <p>All of this data can be deleted at any time by using the <strong>"Unpair"</strong> option in the App's Settings screen.</p>
+
+    <h2>Network Communication</h2>
+    <p>The App communicates with a relay server (relay.ferlay.dev by default, or a self-hosted instance) via WebSocket. The relay server is <strong>stateless</strong> — it only forwards messages between your phone and your computer's daemon in real time. It does not store any messages or data.</p>
+    <p>All communication between the App and the daemon is <strong>end-to-end encrypted</strong> using X25519 ECDH key exchange and AES-256-GCM. The relay server only sees opaque ciphertext and cannot read any message content.</p>
+
+    <h2>Camera Permission</h2>
+    <p>The App requests camera access solely for <strong>QR code scanning</strong> during the one-time device pairing process. No images or video are captured, stored, or transmitted.</p>
+
+    <h2>Third-Party Services</h2>
+    <p>Ferlay does not integrate with any third-party analytics, advertising, or tracking services. The only external communication is with the relay server for its core functionality.</p>
+
+    <h2>Data Deletion</h2>
+    <p>To delete all data stored by the App:</p>
+    <ul>
+      <li>Open Settings in the App and tap <strong>"Unpair"</strong> — this clears all local data including keys, device ID, and session cache.</li>
+      <li>Alternatively, uninstall the App to remove all stored data.</li>
+    </ul>
+    <p>Since the relay server is stateless, there is no server-side data to delete.</p>
+
+    <h2>Children's Privacy</h2>
+    <p>Ferlay is not directed at children under 13. We do not knowingly collect any data from children.</p>
+
+    <h2>Changes to This Policy</h2>
+    <p>We may update this policy from time to time. Changes will be posted on this page with an updated date. The source code for this page is available on <a href="https://github.com/y0sif/ferlay" style="color: var(--accent-light);">GitHub</a>.</p>
+
+    <h2>Contact</h2>
+    <p>If you have questions about this privacy policy, you can open an issue on the <a href="https://github.com/y0sif/ferlay/issues" style="color: var(--accent-light);">Ferlay GitHub repository</a>.</p>
+
+    <footer>
+      <p><a href="https://github.com/y0sif/ferlay">GitHub</a> &middot; MIT License &copy; 2026 Ferlay contributors</p>
+    </footer>
+  </div>
+</body>
+</html>
