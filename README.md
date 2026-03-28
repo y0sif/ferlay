@@ -60,8 +60,10 @@ After setup, the daemon runs in the background and starts automatically on login
 
 | Platform | Link |
 |----------|------|
-| Android  | [Download APK](https://github.com/y0sif/ferlay/releases/latest) |
+| Android  | [Google Play](https://play.google.com/store/apps/details?id=dev.ferlay.app) |
 | iOS      | Coming soon |
+
+> Want the APK directly? Grab it from the [latest release](https://github.com/y0sif/ferlay/releases/latest).
 
 ---
 
