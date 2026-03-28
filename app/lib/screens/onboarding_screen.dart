@@ -452,7 +452,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
               autovalidateMode: AutovalidateMode.onUserInteraction,
               decoration: const InputDecoration(
                 labelText: 'Relay URL',
-                hintText: 'wss://ferlay.dev/ws',
+                hintText: 'wss://relay.ferlay.dev/ws',
                 border: OutlineInputBorder(),
               ),
             ),
