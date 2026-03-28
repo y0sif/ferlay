@@ -277,7 +277,7 @@ fn send_encrypted_relay(msg: &AppMessage, crypto: Option<&CryptoState>) -> Optio
     match crypto.encrypt(plaintext.as_bytes()) {
         Ok(encrypted) => {
             let payload = serde_json::Value::String(encrypted);
-            let control = furlay_shared::messages::ControlMessage::Relay { payload };
+            let control = ferlay_shared::messages::ControlMessage::Relay { payload };
             Some(serde_json::to_string(&control).unwrap())
         }
         Err(e) => {

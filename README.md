@@ -2,7 +2,7 @@
   <img src="assets/ferlay_logo.png" alt="Ferlay" width="128">
 </p>
 
-<h3 align="center">Your AI agent, always within reach.</h3>
+<h3 align="center">Control Claude Code from your phone.</h3>
 
 <p align="center">
   <a href="https://github.com/y0sif/ferlay/releases"><img src="https://img.shields.io/github/v/release/y0sif/ferlay?label=release" alt="Release"></a>
@@ -12,9 +12,9 @@
 
 ---
 
-**Remote control for Claude Code from your phone.** Start, manage, and approve AI coding sessions from anywhere, all end-to-end encrypted.
+**Start, manage, and approve Claude Code sessions from your phone.** Spin up coding sessions, approve tool-use prompts, and monitor progress — all from anywhere.
 
-One command to install, pair, and start running. No port forwarding, no SSH tunnels, no VPN.
+One command to install, pair, and go. No port forwarding, no SSH tunnels, no VPN.
 
 ## Install
 
@@ -22,6 +22,18 @@ One command to install, pair, and start running. No port forwarding, no SSH tunn
 
 ```sh
 curl -sSL https://ferlay.dev/install.sh | sh
+```
+
+### Arch Linux (AUR)
+
+```sh
+yay -S ferlay-bin
+```
+
+### Homebrew (macOS)
+
+```sh
+brew install y0sif/tap/ferlay
 ```
 
 ### Windows
@@ -43,6 +55,13 @@ The installer downloads the daemon, then runs `ferlay setup` which walks you thr
 3. **Background service** - installs and starts the daemon (systemd on Linux, launchd on macOS, Task Scheduler on Windows)
 
 After setup, the daemon runs in the background and starts automatically on login. That's it.
+
+## Get the App
+
+| Platform | Link |
+|----------|------|
+| Android  | [Download APK](https://github.com/y0sif/ferlay/releases/latest) |
+| iOS      | Coming soon |
 
 ---
 
@@ -71,7 +90,7 @@ Run your own relay for full infrastructure control. No database, no external dep
 docker run -d -p 8080:8080 ghcr.io/y0sif/ferlay-relay:latest
 
 # Or from source
-cargo run -p furlay-relay
+cargo run -p ferlay-relay
 ```
 
 Point your daemon at it:
@@ -138,7 +157,7 @@ ferlay/
 cargo build                                             # Build all crates
 cargo test                                              # Run tests
 cargo clippy --all-targets -- -D warnings               # Lint
-RUST_LOG=furlay_relay=debug cargo run -p furlay-relay    # Run relay locally
+RUST_LOG=ferlay_relay=debug cargo run -p ferlay-relay    # Run relay locally
 ./scripts/ferlay-local.sh                               # Run daemon + local relay
 ```
 

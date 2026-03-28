@@ -1,7 +1,7 @@
 import 'dart:convert';
 
 /// Control-level messages (register, pair, relay wrapper).
-/// Mirrors furlay-shared ControlMessage.
+/// Mirrors ferlay-shared ControlMessage.
 class ControlMessage {
   final String type;
   final Map<String, dynamic> data;

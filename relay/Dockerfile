@@ -24,11 +24,11 @@ RUN mkdir -p shared/src relay/src daemon/src \
     && echo "" > shared/src/lib.rs \
     && echo "fn main() {}" > relay/src/main.rs \
     && echo "fn main() {}" > daemon/src/main.rs
-RUN cargo chef cook --release -p furlay-relay --recipe-path recipe.json
+RUN cargo chef cook --release -p ferlay-relay --recipe-path recipe.json
 
 COPY shared/ shared/
 COPY relay/ relay/
-RUN touch relay/src/main.rs && cargo build --release -p furlay-relay
+RUN touch relay/src/main.rs && cargo build --release -p ferlay-relay
 
 # Stage 4: Runtime (~30MB)
 FROM debian:bookworm-slim
@@ -36,10 +36,10 @@ RUN apt-get update \
     && apt-get install -y --no-install-recommends ca-certificates curl \
     && rm -rf /var/lib/apt/lists/* \
     && useradd -r -s /bin/false ferlay
-COPY --from=builder /build/target/release/furlay-relay /usr/local/bin/
+COPY --from=builder /build/target/release/ferlay-relay /usr/local/bin/
 USER ferlay
 EXPOSE 8080
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
     CMD curl -f http://localhost:8080/health || exit 1
-ENV RUST_LOG=furlay_relay=info
-CMD ["furlay-relay"]
+ENV RUST_LOG=ferlay_relay=info
+CMD ["ferlay-relay"]

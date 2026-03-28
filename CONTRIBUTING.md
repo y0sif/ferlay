@@ -68,10 +68,10 @@ cargo fmt --check
 
 ```sh
 # Terminal 1: start local relay
-RUST_LOG=furlay_relay=debug cargo run -p furlay-relay
+RUST_LOG=ferlay_relay=debug cargo run -p ferlay-relay
 
 # Terminal 2: start daemon pointing to local relay
-RUST_LOG=furlay_daemon=debug cargo run -p furlay-daemon -- daemon --relay ws://localhost:8080/ws
+RUST_LOG=ferlay_daemon=debug cargo run -p ferlay-daemon -- daemon --relay ws://localhost:8080/ws
 
 # Or use the convenience script that does both:
 ./scripts/ferlay-local.sh

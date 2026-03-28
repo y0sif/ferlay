@@ -3,7 +3,7 @@ services:
     image: ghcr.io/y0sif/ferlay-relay:latest
     environment:
       PORT: "8080"
-      RUST_LOG: "furlay_relay=info"
+      RUST_LOG: "ferlay_relay=info"
     restart: unless-stopped
     expose:
       - "8080"

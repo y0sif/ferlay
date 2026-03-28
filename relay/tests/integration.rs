@@ -9,11 +9,11 @@ async fn start_server() -> String {
     let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
     let port = listener.local_addr().unwrap().port();
 
-    let state = std::sync::Arc::new(furlay_relay::state::AppState::new());
-    tokio::spawn(furlay_relay::buffer::cleanup_task(state.clone()));
+    let state = std::sync::Arc::new(ferlay_relay::state::AppState::new());
+    tokio::spawn(ferlay_relay::buffer::cleanup_task(state.clone()));
 
     let app = axum::Router::new()
-        .route("/ws", axum::routing::get(furlay_relay::ws::ws_handler))
+        .route("/ws", axum::routing::get(ferlay_relay::ws::ws_handler))
         .route("/health", axum::routing::get(|| async { "ok" }))
         .with_state(state);
 

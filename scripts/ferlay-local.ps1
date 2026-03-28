@@ -12,13 +12,13 @@ if (-not (Get-Command cargo -ErrorAction SilentlyContinue)) {
 }
 
 # --- Locate binaries ---
-$RelayBin = Join-Path $RepoRoot "target\release\furlay-relay.exe"
-$DaemonBin = Join-Path $RepoRoot "target\release\furlay-daemon.exe"
+$RelayBin = Join-Path $RepoRoot "target\release\ferlay-relay.exe"
+$DaemonBin = Join-Path $RepoRoot "target\release\ferlay-daemon.exe"
 
 if (-not (Test-Path $RelayBin) -or -not (Test-Path $DaemonBin)) {
     Write-Host "Binaries not found. Building from source..."
     $CargoToml = Join-Path $RepoRoot "Cargo.toml"
-    cargo build --release --manifest-path $CargoToml -p furlay-relay -p furlay-daemon
+    cargo build --release --manifest-path $CargoToml -p ferlay-relay -p ferlay-daemon
     if ($LASTEXITCODE -ne 0) { exit 1 }
 }
 
@@ -49,7 +49,7 @@ Write-Host ""
 # --- Start relay in background ---
 Write-Host "Starting relay on port 8080..."
 $env:PORT = "8080"
-$env:RUST_LOG = "furlay_relay=info"
+$env:RUST_LOG = "ferlay_relay=info"
 $RelayProc = Start-Process -FilePath $RelayBin -PassThru -NoNewWindow
 
 Start-Sleep -Seconds 1
@@ -65,7 +65,7 @@ if ($RelayProc.HasExited) {
 # --- Start daemon ---
 Write-Host "Starting daemon..."
 Write-Host ""
-$env:RUST_LOG = "furlay_daemon=info"
+$env:RUST_LOG = "ferlay_daemon=info"
 $DaemonProc = Start-Process -FilePath $DaemonBin -ArgumentList "daemon","--local" -PassThru -NoNewWindow
 
 "daemon=$($DaemonProc.Id)" | Out-File -FilePath $PidFile -Append -Encoding ASCII

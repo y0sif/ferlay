@@ -29,7 +29,7 @@
     <key>EnvironmentVariables</key>
     <dict>
         <key>RUST_LOG</key>
-        <string>furlay_daemon=info</string>
+        <string>ferlay_daemon=info</string>
     </dict>
 </dict>
 </plist>

@@ -10,7 +10,7 @@ use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::mpsc;
 
-use furlay_shared::messages::ControlMessage;
+use ferlay_shared::messages::ControlMessage;
 use crate::router;
 use crate::state::AppState;
 

@@ -45,19 +45,19 @@ jobs:
           echo "CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc" >> $GITHUB_ENV
 
       - name: Build daemon
-        run: cargo build --release --target ${{ matrix.target }} -p furlay-daemon
+        run: cargo build --release --target ${{ matrix.target }} -p ferlay-daemon
 
       - name: Package binary (Unix)
         if: runner.os != 'Windows'
         run: |
-          cp target/${{ matrix.target }}/release/furlay-daemon ${{ matrix.asset }}
+          cp target/${{ matrix.target }}/release/ferlay-daemon ${{ matrix.asset }}
           chmod +x ${{ matrix.asset }}
           tar czf ${{ matrix.asset }}.tar.gz ${{ matrix.asset }}
 
       - name: Package binary (Windows)
         if: runner.os == 'Windows'
         run: |
-          copy target\${{ matrix.target }}\release\furlay-daemon.exe ${{ matrix.asset }}.exe
+          copy target\${{ matrix.target }}\release\ferlay-daemon.exe ${{ matrix.asset }}.exe
           Compress-Archive -Path "${{ matrix.asset }}.exe" -DestinationPath "${{ matrix.asset }}.zip"
 
       - name: Upload release assets (Unix)

@@ -2,7 +2,7 @@ use axum::{routing::get, Json, Router};
 use std::sync::Arc;
 use tokio::sync::mpsc;
 
-use furlay_shared::messages::ControlMessage;
+use ferlay_shared::messages::ControlMessage;
 
 use crate::config::Config;
 use crate::crypto::CryptoState;
@@ -214,7 +214,7 @@ pub async fn verify_encryption(
         .encrypt(plaintext.as_bytes())
         .map_err(|e| format!("Failed to encrypt challenge: {e}"))?;
 
-    let control = furlay_shared::messages::ControlMessage::Relay {
+    let control = ferlay_shared::messages::ControlMessage::Relay {
         payload: serde_json::Value::String(encrypted),
     };
     outgoing_tx

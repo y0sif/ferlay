@@ -1,5 +1,5 @@
 use crate::buffer::{buffer_message, drain_buffered_messages};
-use furlay_shared::messages::ControlMessage;
+use ferlay_shared::messages::ControlMessage;
 use crate::pairing::{create_pairing_code, validate_pairing_code};
 use crate::state::{AppState, DeviceConnection};
 use tokio::sync::mpsc;

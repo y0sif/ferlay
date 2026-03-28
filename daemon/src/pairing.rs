@@ -1,4 +1,4 @@
-use furlay_shared::messages::ControlMessage;
+use ferlay_shared::messages::ControlMessage;
 use tokio::sync::mpsc;
 
 use crate::crypto::{self, CryptoState};

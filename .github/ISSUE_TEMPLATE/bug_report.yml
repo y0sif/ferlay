@@ -1,0 +1,52 @@
+name: Bug Report
+description: Report a bug with the daemon, relay, or mobile app
+labels: ["bug"]
+body:
+  - type: dropdown
+    id: component
+    attributes:
+      label: Component
+      options:
+        - Daemon (CLI)
+        - Mobile App (Android)
+        - Mobile App (iOS)
+        - Relay Server
+        - Install Script
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: What happened?
+      placeholder: Describe the issue and what you expected to happen.
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Run `ferlay setup`
+        2. Scan QR code
+        3. ...
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      placeholder: |
+        - OS: Arch Linux / macOS 15 / Windows 11
+        - Architecture: x86_64 / aarch64
+        - Install method: curl script / AUR / Homebrew / source
+        - Ferlay version: `ferlay --version`
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs
+      description: Run with `RUST_LOG=debug ferlay daemon` and paste relevant output.
+      render: shell

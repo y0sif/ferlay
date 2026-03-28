@@ -12,12 +12,12 @@ if ! command -v cargo &>/dev/null; then
 fi
 
 # --- Locate binaries ---
-RELAY_BIN="${REPO_ROOT}/target/release/furlay-relay"
-DAEMON_BIN="${REPO_ROOT}/target/release/furlay-daemon"
+RELAY_BIN="${REPO_ROOT}/target/release/ferlay-relay"
+DAEMON_BIN="${REPO_ROOT}/target/release/ferlay-daemon"
 
 if [ ! -f "$RELAY_BIN" ] || [ ! -f "$DAEMON_BIN" ]; then
     echo "Binaries not found. Building from source..."
-    cargo build --release --manifest-path "$REPO_ROOT/Cargo.toml" -p furlay-relay -p furlay-daemon
+    cargo build --release --manifest-path "$REPO_ROOT/Cargo.toml" -p ferlay-relay -p ferlay-daemon
 fi
 
 # --- Detect LAN IP ---
@@ -66,7 +66,7 @@ trap cleanup INT TERM EXIT
 
 # --- Start relay in background ---
 echo "Starting relay on port 8080..."
-PORT=8080 RUST_LOG=furlay_relay=info "$RELAY_BIN" &
+PORT=8080 RUST_LOG=ferlay_relay=info "$RELAY_BIN" &
 RELAY_PID=$!
 
 # Give relay time to bind
@@ -84,7 +84,7 @@ echo "relay=$RELAY_PID" > "$PID_FILE"
 # --- Start daemon (foreground — shows QR code for pairing) ---
 echo "Starting daemon..."
 echo ""
-RUST_LOG=furlay_daemon=info "$DAEMON_BIN" daemon --local &
+RUST_LOG=ferlay_daemon=info "$DAEMON_BIN" daemon --local &
 DAEMON_PID=$!
 echo "daemon=$DAEMON_PID" >> "$PID_FILE"
 

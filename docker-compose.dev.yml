@@ -6,7 +6,7 @@ services:
     ports:
       - "8080:8080"
     environment:
-      - RUST_LOG=furlay_relay=debug
+      - RUST_LOG=ferlay_relay=debug
       - PORT=8080
 
   daemon:
@@ -16,10 +16,10 @@ services:
     ports:
       - "9876:9876"
     environment:
-      - RUST_LOG=furlay_daemon=debug
+      - RUST_LOG=ferlay_daemon=debug
     depends_on:
       - relay
-    command: ["furlay-daemon", "daemon", "--relay", "ws://relay:8080/ws"]
+    command: ["ferlay-daemon", "daemon", "--relay", "ws://relay:8080/ws"]
     volumes:
       - daemon-config:/root/.config/ferlay
     tty: true

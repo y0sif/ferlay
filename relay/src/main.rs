@@ -3,7 +3,7 @@ use serde_json::json;
 use std::sync::Arc;
 use tower_http::cors::CorsLayer;
 
-use furlay_relay::{buffer, state::AppState, ws};
+use ferlay_relay::{buffer, state::AppState, ws};
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 
@@ -21,7 +21,7 @@ async fn main() {
     tracing_subscriber::fmt()
         .with_env_filter(
             tracing_subscriber::EnvFilter::try_from_default_env()
-                .unwrap_or_else(|_| "furlay_relay=info".into()),
+                .unwrap_or_else(|_| "ferlay_relay=info".into()),
         )
         .init();
 

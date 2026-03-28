@@ -63,7 +63,7 @@ async fn run_pairing_flow(relay_url: &str) {
     // Run the full daemon pairing sequence (reuses the existing daemon::run logic
     // but only the pairing part, then exits)
     use tokio::sync::mpsc;
-    use furlay_shared::messages::ControlMessage;
+    use ferlay_shared::messages::ControlMessage;
     use crate::{pairing, relay};
 
     let (outgoing_tx, outgoing_rx) = mpsc::unbounded_channel::<String>();

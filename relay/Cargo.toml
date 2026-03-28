@@ -1,10 +1,10 @@
 [package]
-name = "furlay-relay"
+name = "ferlay-relay"
 version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-furlay-shared = { path = "../shared" }
+ferlay-shared = { path = "../shared" }
 tokio = { version = "1.50", features = ["full"] }
 axum = { version = "0.8", features = ["ws"] }
 tower-http = { version = "0.6", features = ["cors"] }
