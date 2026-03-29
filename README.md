@@ -1,8 +1,6 @@
 <p align="center">
-  <img src="assets/ferlay_logo.png" alt="Ferlay" width="128">
+  <img src="assets/ferlay_banner.png" alt="Ferlay - Remote control for Claude Code" width="600">
 </p>
-
-<h3 align="center">Control Claude Code from your phone.</h3>
 
 <p align="center">
   <a href="https://github.com/y0sif/ferlay/releases"><img src="https://img.shields.io/github/v/release/y0sif/ferlay?label=release" alt="Release"></a>
@@ -12,9 +10,9 @@
 
 ---
 
-**Start, manage, and approve Claude Code sessions from your phone.** Spin up coding sessions, approve tool-use prompts, and monitor progress — all from anywhere.
+**Start, manage, and approve Claude Code sessions from your phone.** Spin up coding sessions, approve tool-use prompts, and monitor progress - all from anywhere.
 
-One command to install, pair, and go. No port forwarding, no SSH tunnels, no VPN.
+One command to install, pair, and go.
 
 ## Install
 
@@ -23,6 +21,22 @@ One command to install, pair, and go. No port forwarding, no SSH tunnels, no VPN
 ```sh
 curl -sSL https://ferlay.dev/install.sh | sh
 ```
+
+### Windows
+
+```powershell
+irm https://ferlay.dev/install.ps1 | iex
+```
+
+The installer downloads the daemon, then runs `ferlay setup` which walks you through:
+1. **Relay configuration** - uses the hosted relay by default, or enter your own URL
+2. **Pairing** - displays a QR code, scan it with the Ferlay app
+3. **Background service** - installs and starts the daemon (systemd on Linux, launchd on macOS, Task Scheduler on Windows)
+
+After setup, the daemon runs in the background and starts automatically on login. That's it.
+
+<details>
+<summary><b>Other install methods (AUR, Homebrew, from source)</b></summary>
 
 ### Arch Linux (AUR)
 
@@ -36,12 +50,6 @@ yay -S ferlay-bin
 brew install y0sif/tap/ferlay
 ```
 
-### Windows
-
-```powershell
-irm https://ferlay.dev/install.ps1 | iex
-```
-
 ### From source
 
 ```sh
@@ -49,12 +57,7 @@ cargo install --path daemon
 ferlay setup
 ```
 
-The installer downloads the daemon, then runs `ferlay setup` which walks you through:
-1. **Relay configuration** - uses the hosted relay by default, or enter your own URL
-2. **Pairing** - displays a QR code, scan it with the Ferlay app
-3. **Background service** - installs and starts the daemon (systemd on Linux, launchd on macOS, Task Scheduler on Windows)
-
-After setup, the daemon runs in the background and starts automatically on login. That's it.
+</details>
 
 ## Get the App
 
