@@ -196,7 +196,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
           ),
           const SizedBox(height: 12),
           Text(
-            'Your AI agent, always within reach.',
+            'Remote control for Claude Code.',
             style: theme.textTheme.bodyLarge?.copyWith(
               color: const Color(0xFFCAC4D0),
             ),

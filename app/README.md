@@ -3,7 +3,7 @@
 </p>
 
 <h3 align="center">ferlay</h3>
-<p align="center"><i>your AI agent, always within reach.</i></p>
+<p align="center"><i>Remote control for Claude Code.</i></p>
 
 ---
 
