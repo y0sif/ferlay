@@ -60,10 +60,10 @@ After setup, the daemon runs in the background and starts automatically on login
 
 | Platform | Link |
 |----------|------|
-| Android  | [Google Play](https://play.google.com/store/apps/details?id=dev.ferlay.app) |
+| Android (APK) | [Latest release](https://github.com/y0sif/ferlay/releases/latest) |
 | iOS      | Coming soon |
 
-> Want the APK directly? Grab it from the [latest release](https://github.com/y0sif/ferlay/releases/latest).
+> **Google Play**: Ferlay is currently in internal testing on the Play Store. To help get it published, we need testers to opt in. If you'd like to help, send your Gmail address to [y0sif](https://github.com/y0sif) (open an issue or DM) and you'll receive an invite link to join the test.
 
 ---
 
