@@ -78,8 +78,16 @@ release with those assets. Steps:
 4. **Commit** `chore(release): v<VERSION>` and land it on `main`.
 5. **Tag and push**: `git tag v<VERSION>; git push origin v<VERSION>`. Watch the run with
    `gh run watch` and confirm it goes green.
-6. **Add release notes**: `action-gh-release` publishes the release with an empty body,
-   so set notes from the CHANGELOG: `gh release edit v<VERSION> --notes-file <notes>`.
+6. **Add release notes** (`action-gh-release` publishes an empty body):
+   `gh release edit v<VERSION> --notes-file <notes>`. House style, one bullet per change:
+   - A `## Highlights` section with a bold-titled bullet per change, referencing the
+     issue/PR number(s) and **crediting the reporter or author inline**
+     (`Thanks @user for the report.` / `for the PR.`). Always thank whoever raised the
+     issue or sent the fix.
+   - An `## Install / Upgrade` block: `curl -sSL https://ferlay.dev/install.sh | sh`,
+     `yay -S ferlay-bin`, `brew install y0sif/tap/ferlay`.
+   - A `**Full Changelog**: https://github.com/y0sif/ferlay/compare/v<PREV>...v<VERSION>`
+     link.
 7. **Update the AUR package** (`~/Projects/ferlay-bin`): set `pkgver=<VERSION>`, update
    `sha256sums_x86_64` / `sha256sums_aarch64` from the new Linux tarballs
    (`sha256sum ferlay-daemon-linux-*.tar.gz`), regenerate `.SRCINFO`
