@@ -4,7 +4,10 @@ use tokio::io::{AsyncBufReadExt, BufReader, Lines};
 use tokio::process::{Child, ChildStdout};
 
 static URL_REGEX: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"https://claude\.ai/code\?bridge=env_[a-zA-Z0-9]+").expect("valid regex")
+    // Claude Code renamed the session URL query param from `bridge` to
+    // `environment` (seen in 2.1.x). Accept both so we work across versions.
+    Regex::new(r"https://claude\.ai/code\?(?:bridge|environment)=env_[a-zA-Z0-9]+")
+        .expect("valid regex")
 });
 
 /// Extracts a Claude session URL from a line of stdout output.
@@ -43,7 +46,8 @@ pub async fn wait_for_url(child: &mut Child) -> Result<CaptureResult, String> {
                         }
                     }
                     Ok(None) => {
-                        return Err("Process stdout closed before URL found".to_string());
+                        let hint = drain_stderr(child).await;
+                        return Err(format!("Process stdout closed before URL found{hint}"));
                     }
                     Err(e) => {
                         return Err(format!("Error reading stdout: {e}"));
@@ -52,11 +56,47 @@ pub async fn wait_for_url(child: &mut Child) -> Result<CaptureResult, String> {
             }
             status = child.wait() => {
                 match status {
-                    Ok(s) => return Err(format!("Process exited ({s}) before URL found")),
+                    Ok(s) => {
+                        let hint = drain_stderr(child).await;
+                        return Err(format!("Process exited ({s}) before URL found{hint}"));
+                    }
                     Err(e) => return Err(format!("Process wait error: {e}")),
                 }
             }
         }
+    }
+}
+
+/// Reads whatever is on the child's stderr (bounded, non-blocking-ish) so a
+/// failure to capture the URL surfaces the real cause (e.g. "Workspace not
+/// trusted"). Returns a "\nLast stderr:\n..." suffix, or "" if nothing useful.
+async fn drain_stderr(child: &mut Child) -> String {
+    let Some(stderr) = child.stderr.take() else {
+        return String::new();
+    };
+    let mut reader = BufReader::new(stderr).lines();
+    let mut collected: Vec<String> = Vec::new();
+    // Cap the wait so a still-running process can't hang us here.
+    let deadline = tokio::time::sleep(std::time::Duration::from_secs(2));
+    tokio::pin!(deadline);
+    loop {
+        tokio::select! {
+            line = reader.next_line() => match line {
+                Ok(Some(l)) => {
+                    if collected.len() >= 5 {
+                        collected.remove(0);
+                    }
+                    collected.push(l);
+                }
+                _ => break,
+            },
+            _ = &mut deadline => break,
+        }
+    }
+    if collected.is_empty() {
+        String::new()
+    } else {
+        format!("\nLast stderr:\n{}", collected.join("\n"))
     }
 }
 
@@ -70,6 +110,18 @@ mod tests {
         assert_eq!(
             extract_url(line),
             Some("https://claude.ai/code?bridge=env_abc123DEF".to_string())
+        );
+    }
+
+    #[test]
+    fn extracts_url_with_environment_param() {
+        // Real format printed by claude remote-control 2.1.x
+        let line = "Continue coding in the Claude mobile app or https://claude.ai/code?environment=env_01CZbfW16GsUqzNvMBAL9oXQ";
+        assert_eq!(
+            extract_url(line),
+            Some(
+                "https://claude.ai/code?environment=env_01CZbfW16GsUqzNvMBAL9oXQ".to_string()
+            )
         );
     }
 
