@@ -8,7 +8,7 @@
   <meta property="og:title" content="Ferlay - Remote Control for Claude Code">
   <meta property="og:description" content="Control Claude Code from your phone. Start, manage, and approve AI coding sessions from anywhere. End-to-end encrypted.">
   <meta property="og:type" content="website">
-  <meta property="og:url" content="https://ferlay.dev">
+  <meta property="og:url" content="https://y0sif.github.io/ferlay">
   <link rel="icon" type="image/png" href="logo.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -573,6 +573,13 @@
 </head>
 <body>
   <div class="container">
+  <div style="max-width:820px;margin:24px auto 0;padding:18px 22px;border:1px solid #6b5700;border-radius:10px;background:#241f00;color:#f2e6a8;font-size:15px;line-height:1.65;">
+      <strong style="display:block;font-size:16px;color:#ffd85c;margin-bottom:6px;">Ferlay is archived and no longer maintained (August 2026).</strong>
+      Claude Code ships this natively now. Use <code style="background:#3a3200;padding:1px 5px;border-radius:4px;">claude remote-control</code> for a persistent server that accepts sessions from the Claude mobile app and claude.ai/code, or <code style="background:#3a3200;padding:1px 5px;border-radius:4px;">claude self-hosted-runner</code> to run sessions on your own machines.
+      <a href="https://code.claude.com/docs/en/remote-control" style="color:#ffd85c;">Remote Control docs</a>.
+      <br><br>
+      The hosted relay has been shut down, so the install commands below only work against a relay you host yourself. The relay is MIT licensed: see <a href="https://github.com/y0sif/ferlay/blob/main/docs/self-hosting.md" style="color:#ffd85c;">self-hosting</a>.
+  </div>
 
     <!-- Hero -->
     <header>
@@ -606,7 +613,7 @@
     <!-- Install -->
     <section class="install" id="install">
       <p class="section-label">Get Started</p>
-      <h2 class="section-title">Install in seconds</h2>
+      <h2 class="section-title">Install (archived)</h2>
 
       <div class="install-card">
         <div class="install-tabs" role="tablist">
@@ -625,7 +632,7 @@
         <div class="install-panel active" data-panel="unix">
           <div class="install-cmd">
             <span class="prompt">$</span>
-            <span class="command" id="cmd-unix">curl -sSL https://ferlay.dev/install.sh | sh</span>
+            <span class="command" id="cmd-unix">curl -sSL https://y0sif.github.io/ferlay/install.sh | sh</span>
             <button class="copy-btn" onclick="copyCommand('cmd-unix', this)" aria-label="Copy to clipboard">
               <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon-copy"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
               <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon-check" style="display:none"><polyline points="20 6 9 17 4 12"/></svg>
@@ -636,7 +643,7 @@
         <div class="install-panel" data-panel="windows">
           <div class="install-cmd">
             <span class="prompt">&gt;</span>
-            <span class="command" id="cmd-windows">irm https://ferlay.dev/install.ps1 | iex</span>
+            <span class="command" id="cmd-windows">irm https://y0sif.github.io/ferlay/install.ps1 | iex</span>
             <button class="copy-btn" onclick="copyCommand('cmd-windows', this)" aria-label="Copy to clipboard">
               <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon-copy"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
               <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon-check" style="display:none"><polyline points="20 6 9 17 4 12"/></svg>
@@ -710,7 +717,7 @@
       <div class="arch-visual">
         <span class="arch-node">Phone App</span>
         <span class="arch-arrow">&larr;&rarr;</span>
-        <span class="arch-node">Relay<span class="arch-label">relay.ferlay.dev</span></span>
+        <span class="arch-node">Relay<span class="arch-label">self-hosted</span></span>
         <span class="arch-arrow">&larr;&rarr;</span>
         <span class="arch-node">Daemon<span class="arch-label">your machine</span></span>
         <span class="arch-arrow">&larr;&rarr;</span>

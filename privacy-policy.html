@@ -125,7 +125,7 @@
     <p>The App stores the following data locally using encrypted device storage (Flutter Secure Storage):</p>
     <ul>
       <li><strong>Device ID</strong> — A randomly generated UUID used to identify your device to the relay server. This is not linked to your identity.</li>
-      <li><strong>Relay URL</strong> — The WebSocket endpoint for communication (default: relay.ferlay.dev).</li>
+      <li><strong>Relay URL</strong> — The WebSocket endpoint for communication (a relay you host yourself; the previously hosted relay.ferlay.dev has been shut down).</li>
       <li><strong>Paired device ID</strong> — The identifier of the daemon you paired with.</li>
       <li><strong>Encryption key</strong> — An AES-256 key derived from X25519 key exchange, used for end-to-end encryption.</li>
       <li><strong>Session cache</strong> — A local cache of your Claude Code sessions for offline viewing.</li>
@@ -133,7 +133,7 @@
     <p>All of this data can be deleted at any time by using the <strong>"Unpair"</strong> option in the App's Settings screen.</p>
 
     <h2>Network Communication</h2>
-    <p>The App communicates with a relay server (relay.ferlay.dev by default, or a self-hosted instance) via WebSocket. The relay server is <strong>stateless</strong> — it only forwards messages between your phone and your computer's daemon in real time. It does not store any messages or data.</p>
+    <p>The App communicates with a relay server (self-hosted; the previously hosted relay.ferlay.dev has been shut down) via WebSocket. The relay server is <strong>stateless</strong> — it only forwards messages between your phone and your computer's daemon in real time. It does not store any messages or data.</p>
     <p>All communication between the App and the daemon is <strong>end-to-end encrypted</strong> using X25519 ECDH key exchange and AES-256-GCM. The relay server only sees opaque ciphertext and cannot read any message content.</p>
 
     <h2>Camera Permission</h2>

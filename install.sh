@@ -2,7 +2,7 @@
 set -e
 
 # Ferlay Daemon Installer
-# Usage: curl -sSL https://ferlay.dev/install.sh | sh
+# Usage: curl -sSL https://y0sif.github.io/ferlay/install.sh | sh
 
 REPO="y0sif/ferlay"
 BINARY_NAME="ferlay"
