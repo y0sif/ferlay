@@ -1,0 +1,65 @@
+Awesome Claude Code - Resource Submission
+==========================================
+Issue title: [Resource]: Ferlay
+URL: https://github.com/hesreallyhim/awesome-claude-code/issues/new?template=recommend-resource.yml
+
+Fill in each field as shown below:
+
+
+Display Name:
+  Ferlay
+
+Category:
+  Alternative Clients
+
+Sub-Category:
+  General
+
+Primary Link:
+  https://github.com/y0sif/ferlay
+
+Author Name:
+  y0sif
+
+Author Link:
+  https://github.com/y0sif
+
+License:
+  MIT
+
+Description:
+  A remote control for Claude Code that lets you start, manage, and approve
+  sessions from your phone. Communication is end-to-end encrypted using
+  X25519 key exchange and AES-256-GCM, routed through a self-hostable relay
+  server. Supports QR-code pairing and runs as a background daemon on Linux,
+  macOS, and Windows.
+
+Validate Claims:
+  Install the daemon on your machine with the one-liner from the README, then
+  install the Android app from the Play Store or grab the APK from GitHub
+  releases. Scan the QR code shown by `ferlay pair` to pair your phone. You
+  can then start a Claude Code session and approve tool-use prompts directly
+  from the app.
+
+Specific Task(s):
+  Pair your phone with the daemon, then start a Claude Code session from the
+  mobile app. Give Claude a task that requires tool approval (e.g., editing a
+  file) and approve it from your phone.
+
+Specific Prompt(s):
+  From the mobile app, start a session and send: "Create a file called
+  hello.txt with the contents 'Hello from Ferlay'" -- then approve the
+  tool-use prompt from your phone when it appears.
+
+Additional Comments:
+  Ferlay was built to solve the problem of needing to be at your computer to
+  approve Claude Code prompts. The relay server can be self-hosted via Docker
+  or used at relay.ferlay.dev. The mobile app is built with Flutter (Android
+  available now, iOS coming soon).
+
+Checklist (check all):
+  [x] I have checked that this resource hasn't already been submitted
+  [x] It has been over one week since the first public commit
+  [x] All provided links are working and publicly accessible
+  [x] I do NOT have any other open issues in this repository
+  [x] I am primarily composed of human-y stuff and not electrical circuits

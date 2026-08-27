@@ -3,7 +3,7 @@
 ## 1. Install the daemon
 
 ```sh
-curl -sSL https://get.ferlay.dev | sh
+curl -sSL https://y0sif.github.io/ferlay/install.sh | sh
 ```
 
 Or download the binary directly from [GitHub Releases](https://github.com/OWNER/ferlay/releases/latest).

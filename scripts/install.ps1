@@ -1,5 +1,5 @@
 # Ferlay Daemon Installer for Windows
-# Usage: irm https://ferlay.dev/install.ps1 | iex
+# Usage: irm https://y0sif.github.io/ferlay/install.ps1 | iex
 
 $ErrorActionPreference = "Stop"
 

@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased] - 2026-08-27
+
+### Deprecated
+
+- **Project archived.** Claude Code now provides this natively via `claude remote-control`
+  (persistent server mode) and `claude self-hosted-runner`. No further releases are planned.
+- The hosted relay at `relay.ferlay.dev` has been shut down. Existing installs cannot connect
+  unless reconfigured to a self-hosted relay.
+- Installer URLs moved from `ferlay.dev` to `y0sif.github.io/ferlay`; the `ferlay.dev` domain
+  is no longer used.
+
 ## [0.1.1] - 2026-07-01
 
 ### Fixed

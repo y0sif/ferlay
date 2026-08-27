@@ -10,6 +10,20 @@
 
 ---
 
+> [!WARNING]
+> **Ferlay is archived and no longer maintained (August 2026).**
+>
+> Claude Code ships this natively now. Use `claude remote-control` for a persistent
+> server that accepts sessions from the Claude mobile app and claude.ai/code, or
+> `claude self-hosted-runner` to run sessions on your own machines. See the
+> [Remote Control docs](https://code.claude.com/docs/en/remote-control).
+>
+> The hosted relay at `relay.ferlay.dev` has been shut down, so existing installs
+> can no longer connect. The relay is MIT licensed and self-hostable if you want to
+> run your own: see [docs/self-hosting.md](docs/self-hosting.md).
+>
+> Everything below is left intact as a reference.
+
 **Start, manage, and approve Claude Code sessions from your phone.** Spin up coding sessions, approve tool-use prompts, and monitor progress - all from anywhere.
 
 One command to install, pair, and go.
@@ -19,17 +33,17 @@ One command to install, pair, and go.
 ### Linux / macOS
 
 ```sh
-curl -sSL https://ferlay.dev/install.sh | sh
+curl -sSL https://y0sif.github.io/ferlay/install.sh | sh
 ```
 
 ### Windows
 
 ```powershell
-irm https://ferlay.dev/install.ps1 | iex
+irm https://y0sif.github.io/ferlay/install.ps1 | iex
 ```
 
 The installer downloads the daemon, then runs `ferlay setup` which walks you through:
-1. **Relay configuration** - uses the hosted relay by default, or enter your own URL
+1. **Relay configuration** - enter the URL of a relay you host yourself (the hosted relay is shut down)
 2. **Pairing** - displays a QR code, scan it with the Ferlay app
 3. **Background service** - installs and starts the daemon (systemd on Linux, launchd on macOS, Task Scheduler on Windows)
 
@@ -66,15 +80,13 @@ ferlay setup
 | Android (APK) | [Latest release](https://github.com/y0sif/ferlay/releases/latest) |
 | iOS      | Coming soon |
 
-> **Google Play**: Ferlay is currently in internal testing on the Play Store. To help get it published, we need testers to opt in. If you'd like to help, send your Gmail address to [y0sif](https://github.com/y0sif) (open an issue or DM) and you'll receive an invite link to join the test.
-
 ---
 
 ## How It Works
 
 ```
 Phone App  <-->  Relay Server  <-->  Daemon  <-->  Claude Code
-                 (relay.ferlay.dev)  (your machine)
+                 (self-hosted)       (your machine)
 ```
 
 1. **Daemon** runs on your computer, manages Claude Code sessions
